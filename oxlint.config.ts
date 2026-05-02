@@ -72,7 +72,7 @@ export default defineConfig({
     {
       files: ["*.d.ts"],
       rules: {
-        "typescript/consistent-function-scoping": "off",
+        "unicorn/consistent-function-scoping": "off",
         "typescript/consistent-type-definitions": "off",
       },
     },
