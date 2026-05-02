@@ -1,6 +1,5 @@
 {
   "name": "@weapon/remote",
-  "private": true,
   "type": "module",
   "exports": "./src/remote.ts",
   "dependencies": {

@@ -1,6 +1,5 @@
 {
   "name": "@weapon/query",
-  "private": true,
   "type": "module",
   "exports": "./src/query.ts",
   "dependencies": {

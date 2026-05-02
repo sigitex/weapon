@@ -1,6 +1,5 @@
 {
   "name": "@weapon/redact",
-  "private": true,
   "type": "module",
   "exports": "./src/redact.ts",
   "dependencies": {
