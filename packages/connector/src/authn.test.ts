@@ -37,7 +37,7 @@ tokens.save({
   refreshToken: "refresh-1",
   clientId: "test-client",
   scopes: ["read"],
-  expiresAt: Date.now() + 60000,
+  expiresAt: Date.now() + 60_000,
 })
 
 const users: Record<string, User> = {

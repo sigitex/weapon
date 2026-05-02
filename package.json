@@ -5,7 +5,8 @@
   "license": "MIT",
   "workspaces": {
     "packages": [
-      "packages/*"
+      "packages/*",
+      "../toolkit/packages/*"
     ],
     "catalog": {
       "@ark/schema": "0.56.0",
