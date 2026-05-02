@@ -1,0 +1,31 @@
+{
+  "name": "@weapon/gateway",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@sigitex/bind": "workspace:*",
+    "@weapon/spec": "workspace:*",
+    "regexparam": "catalog:"
+  },
+  "devDependencies": {
+    "@sigitex/ssjs": "workspace:*",
+    "@typescript/native-preview": "beta"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Sigitex",
+    "url": "http://github.com/sigitex"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sigitex/weapon.git"
+  },
+  "scripts": {
+    "check": "tsgo --noEmit",
+    "test": "bun test --pass-with-no-tests"
+  },
+  "files": [
+    "src"
+  ]
+}

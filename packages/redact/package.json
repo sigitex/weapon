@@ -1,0 +1,31 @@
+{
+  "name": "@weapon/redact",
+  "private": true,
+  "type": "module",
+  "exports": "./src/redact.ts",
+  "dependencies": {
+    "regexparam": "catalog:"
+  },
+  "devDependencies": {
+    "@ark/schema": "catalog:",
+    "@sigitex/ssjs": "workspace:*",
+    "arktype": "catalog:",
+    "@typescript/native-preview": "beta"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Sigitex",
+    "url": "http://github.com/sigitex"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sigitex/weapon.git"
+  },
+  "scripts": {
+    "check": "tsgo --noEmit",
+    "test": "bun test --pass-with-no-tests"
+  },
+  "files": [
+    "src"
+  ]
+}

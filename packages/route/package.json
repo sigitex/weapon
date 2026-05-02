@@ -1,0 +1,36 @@
+{
+  "name": "@weapon/route",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./cloudflare": "./src/platform/cloudflare.ts",
+    "./bun": "./src/platform/bun.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250425.0",
+    "@sigitex/ssjs": "workspace:*",
+    "@sigitex/bind": "workspace:*",
+    "@types/bun": "catalog:",
+    "@typescript/native-preview": "beta"
+  },
+  "dependencies": {
+    "regexparam": "catalog:"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Sigitex",
+    "url": "http://github.com/sigitex"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sigitex/weapon.git"
+  },
+  "scripts": {
+    "check": "tsgo --noEmit",
+    "test": "bun test --pass-with-no-tests"
+  },
+  "files": [
+    "src"
+  ]
+}

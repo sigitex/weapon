@@ -1,0 +1,39 @@
+{
+  "name": "@weapon/connector",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./cloudflare": "./src/stores/cloudflare.ts",
+    "./kv": "./src/stores/kv.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@sigitex/bind": "workspace:*",
+    "@weapon/spec": "workspace:*",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@sigitex/ssjs": "workspace:*",
+    "@types/bun": "catalog:",
+    "@types/express": "^5.0.6",
+    "arktype": "catalog:",
+    "@typescript/native-preview": "beta"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Sigitex",
+    "url": "http://github.com/sigitex"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sigitex/weapon.git"
+  },
+  "scripts": {
+    "check": "tsgo --noEmit",
+    "test": "bun test --pass-with-no-tests"
+  },
+  "files": [
+    "src"
+  ]
+}

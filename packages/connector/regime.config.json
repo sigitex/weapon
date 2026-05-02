@@ -1,0 +1,8 @@
+{
+  "templates": [
+    "monorepo-package"
+  ],
+  "vars": {
+    "repo": "weapon"
+  }
+}

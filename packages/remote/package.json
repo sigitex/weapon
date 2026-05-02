@@ -1,0 +1,28 @@
+{
+  "name": "@weapon/remote",
+  "private": true,
+  "type": "module",
+  "exports": "./src/remote.ts",
+  "dependencies": {
+    "@weapon/spec": "workspace:*"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Sigitex",
+    "url": "http://github.com/sigitex"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sigitex/weapon.git"
+  },
+  "devDependencies": {
+    "@typescript/native-preview": "beta"
+  },
+  "scripts": {
+    "check": "tsgo --noEmit",
+    "test": "bun test --pass-with-no-tests"
+  },
+  "files": [
+    "src"
+  ]
+}
