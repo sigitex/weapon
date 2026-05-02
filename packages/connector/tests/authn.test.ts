@@ -1,8 +1,8 @@
 import { describe, test, expect } from "bun:test"
 import { type } from "arktype"
 import { spec, mcp } from "@weapon/spec"
-import { connector } from "./connector"
-import { TokenStore } from "./stores"
+import { connector } from "../src/connector"
+import { TokenStore } from "../src/stores"
 
 type User = { id: string; name: string }
 

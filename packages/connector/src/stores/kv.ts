@@ -1,5 +1,11 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: intent */
-import type { ClientStore, CodeStore, TokenStore, OAuthClient, AuthorizationCode, OAuthToken } from "../stores"
+import type {
+  AuthorizationCode,
+  ClientStore,
+  CodeStore,
+  OAuthClient,
+  OAuthToken,
+  TokenStore,
+} from "../stores"
 
 /**
  * Unstorage-compatible interface.
@@ -47,7 +53,6 @@ export function kv(instance: UnstorageInstance | KeyvInstance): {
   codes: CodeStore
   tokens: TokenStore
 } {
-  const adapter = createAdapter(instance)
   return {
     clients: kv.clients(instance),
     codes: kv.codes(instance),
@@ -57,12 +62,17 @@ export function kv(instance: UnstorageInstance | KeyvInstance): {
 
 export namespace kv {
   /** Creates a KV-backed ClientStore. */
-  export function clients(instance: UnstorageInstance | KeyvInstance, prefix = "oauth:clients:"): ClientStore {
+  export function clients(
+    instance: UnstorageInstance | KeyvInstance,
+    prefix = "oauth:clients:",
+  ): ClientStore {
     const adapter = createAdapter(instance)
     return {
       async get(clientId) {
         const raw = await adapter.get(`${prefix}${clientId}`)
-        if (!raw) return null
+        if (!raw) {
+          return null
+        }
         const client = JSON.parse(raw) as OAuthClient
         if (client.secretExpiresAt && client.secretExpiresAt < Date.now()) {
           await adapter.del(`${prefix}${clientId}`)
@@ -77,7 +87,10 @@ export namespace kv {
   }
 
   /** Creates a KV-backed CodeStore. */
-  export function codes(instance: UnstorageInstance | KeyvInstance, prefix = "oauth:codes:"): CodeStore {
+  export function codes(
+    instance: UnstorageInstance | KeyvInstance,
+    prefix = "oauth:codes:",
+  ): CodeStore {
     const adapter = createAdapter(instance)
     return {
       async save(code) {
@@ -86,17 +99,24 @@ export namespace kv {
       },
       async consume(code) {
         const raw = await adapter.get(`${prefix}${code}`)
-        if (!raw) return null
+        if (!raw) {
+          return null
+        }
         await adapter.del(`${prefix}${code}`)
         const entry = JSON.parse(raw) as AuthorizationCode
-        if (entry.expiresAt < Date.now()) return null
+        if (entry.expiresAt < Date.now()) {
+          return null
+        }
         return entry
       },
     }
   }
 
   /** Creates a KV-backed TokenStore. Dual-key entries for access + refresh token lookup. */
-  export function tokens(instance: UnstorageInstance | KeyvInstance, prefix = "oauth:tokens:"): TokenStore {
+  export function tokens(
+    instance: UnstorageInstance | KeyvInstance,
+    prefix = "oauth:tokens:",
+  ): TokenStore {
     const adapter = createAdapter(instance)
     return {
       async save(token) {
@@ -109,18 +129,24 @@ export namespace kv {
       },
       async getByAccessToken(token) {
         const raw = await adapter.get(`${prefix}access:${token}`)
-        if (!raw) return null
+        if (!raw) {
+          return null
+        }
         const entry = JSON.parse(raw) as OAuthToken
         if (entry.expiresAt < Date.now()) {
           await adapter.del(`${prefix}access:${token}`)
-          if (entry.refreshToken) await adapter.del(`${prefix}refresh:${entry.refreshToken}`)
+          if (entry.refreshToken) {
+            await adapter.del(`${prefix}refresh:${entry.refreshToken}`)
+          }
           return null
         }
         return entry
       },
       async getByRefreshToken(token) {
         const raw = await adapter.get(`${prefix}refresh:${token}`)
-        if (!raw) return null
+        if (!raw) {
+          return null
+        }
         return JSON.parse(raw) as OAuthToken
       },
       async revoke(token) {
@@ -128,7 +154,9 @@ export namespace kv {
         if (byAccess) {
           const entry = JSON.parse(byAccess) as OAuthToken
           await adapter.del(`${prefix}access:${token}`)
-          if (entry.refreshToken) await adapter.del(`${prefix}refresh:${entry.refreshToken}`)
+          if (entry.refreshToken) {
+            await adapter.del(`${prefix}refresh:${entry.refreshToken}`)
+          }
           return
         }
         const byRefresh = await adapter.get(`${prefix}refresh:${token}`)
@@ -153,7 +181,11 @@ function createAdapter(instance: UnstorageInstance | KeyvInstance): KVAdapter {
         return s.getItem(key)
       },
       async set(key, value, ttlMs) {
-        await s.setItem(key, value, ttlMs ? { ttl: Math.ceil(ttlMs / 1000) } : undefined)
+        await s.setItem(
+          key,
+          value,
+          ttlMs ? { ttl: Math.ceil(ttlMs / 1000) } : undefined,
+        )
       },
       async del(key) {
         await s.removeItem(key)
@@ -165,7 +197,9 @@ function createAdapter(instance: UnstorageInstance | KeyvInstance): KVAdapter {
   return {
     async get(key) {
       const val = await k.get(key)
-      if (val === undefined || val === null) return null
+      if (val === undefined || val === null) {
+        return null
+      }
       return typeof val === "string" ? val : JSON.stringify(val)
     },
     async set(key, value, ttlMs) {

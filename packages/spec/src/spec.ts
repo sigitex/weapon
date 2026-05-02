@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: intent */
+// oxlint-disable typescript/no-explicit-any
 import type { Type } from "arktype"
 
 /**

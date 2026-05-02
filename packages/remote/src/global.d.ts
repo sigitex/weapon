@@ -1,4 +1,10 @@
+// oxlint-disable no-var
+// oxlint-disable typescript/consistent-type-definitions
 // Minimal WinterCG-compatible types for remote.
+
+declare var URLSearchParams: {
+  new (init?: string | Record<string, string> | [string, string][]): URLSearchParams
+}
 
 declare type MaybePromise<T> = T | Promise<T>
 
@@ -31,8 +37,4 @@ declare function fetch(input: string, init?: RequestInit): Promise<Response>
 
 declare interface URLSearchParams {
   toString(): string
-}
-
-declare var URLSearchParams: {
-  new (init?: string | Record<string, string> | [string, string][]): URLSearchParams
 }

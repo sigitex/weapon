@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test"
 import { type } from "arktype"
 import { spec, mcp } from "@weapon/spec"
-import { connector } from "./connector"
+import { connector } from "../src/connector"
 
 const TestSpec = spec(
   {
@@ -129,7 +129,7 @@ describe("fetch handler", () => {
   test("unknown method returns method not found", async () => {
     const res = await app.fetch(jsonRpc("unknown/method"))
     const body = await res.json() as any
-    expect(body.error.code).toBe(-32601)
+    expect(body.error.code).toBe(-32_601)
   })
 
   test("GET returns 405", async () => {

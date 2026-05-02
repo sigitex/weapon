@@ -1,5 +1,5 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: intent */
-import type { Container } from "@weapon/bind"
+// oxlint-disable typescript/no-explicit-any
+import type { Container } from "@sigitex/bind"
 import type {
   Spec,
   DefinesProtocol,

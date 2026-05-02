@@ -1,6 +1,12 @@
-import { describe, test, expect, beforeEach } from "bun:test"
-import { ClientStore, CodeStore, TokenStore } from "./stores"
-import type { OAuthClient, AuthorizationCode, OAuthToken } from "./stores"
+import { beforeEach, describe, expect, test } from "bun:test"
+import {
+  ClientStore,
+  CodeStore,
+  TokenStore,
+  type AuthorizationCode,
+  type OAuthClient,
+  type OAuthToken,
+} from "../src/stores"
 
 describe("ClientStore.inMemory", () => {
   let store: ClientStore

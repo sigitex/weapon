@@ -74,9 +74,13 @@ export namespace CodeStore {
       },
       consume(code) {
         const entry = codes.get(code) ?? null
-        if (!entry) return null
+        if (!entry) {
+          return null
+        }
         codes.delete(code)
-        if (entry.expiresAt < Date.now()) return null
+        if (entry.expiresAt < Date.now()) {
+          return null
+        }
         return entry
       },
     }
@@ -108,21 +112,27 @@ export namespace TokenStore {
         const entry = byAccessToken.get(token) ?? null
         if (entry && entry.expiresAt < Date.now()) {
           byAccessToken.delete(token)
-          if (entry.refreshToken) byRefreshToken.delete(entry.refreshToken)
+          if (entry.refreshToken) {
+            byRefreshToken.delete(entry.refreshToken)
+          }
           return null
         }
         return entry
       },
       getByRefreshToken(token) {
         const entry = byRefreshToken.get(token) ?? null
-        if (!entry) return null
+        if (!entry) {
+          return null
+        }
         return entry
       },
       revoke(token) {
         const byAccess = byAccessToken.get(token)
         if (byAccess) {
           byAccessToken.delete(token)
-          if (byAccess.refreshToken) byRefreshToken.delete(byAccess.refreshToken)
+          if (byAccess.refreshToken) {
+            byRefreshToken.delete(byAccess.refreshToken)
+          }
           return
         }
         const byRefresh = byRefreshToken.get(token)

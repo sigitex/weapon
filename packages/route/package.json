@@ -4,8 +4,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./cloudflare": "./src/platform/cloudflare.ts",
-    "./bun": "./src/platform/bun.ts"
+    "./cloudflare": "./src/cloudflare/index.ts",
+    "./bun": "./src/bun/index.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250425.0",
@@ -27,7 +27,7 @@
     "url": "https://github.com/sigitex/weapon.git"
   },
   "scripts": {
-    "check": "tsgo --noEmit",
+    "check": "tsgo --noEmit && find . -mindepth 2 -name tsconfig.json -not -path '*/node_modules/*' -exec tsgo --noEmit -p {} \\;",
     "test": "bun test --pass-with-no-tests"
   },
   "files": [

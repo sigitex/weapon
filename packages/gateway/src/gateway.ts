@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: intent */
+// oxlint-disable typescript/no-explicit-any
 import {
   type BoundService,
   type ConfigOf,
@@ -12,8 +12,7 @@ import {
   type Spec,
   type TransportConfig,
 } from "@weapon/spec"
-import type { HttpHostConfig } from "./httpHost"
-import { httpHost } from "./httpHost"
+import { httpHost, type HttpHostConfig } from "./httpHost"
 
 /** Flat config for {@link gateway} — merges HTTP host config and middleware implementations. */
 export type GatewayConfig<

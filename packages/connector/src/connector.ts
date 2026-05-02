@@ -1,5 +1,6 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: intent */
-import { Container } from "@weapon/bind"
+// oxlint-disable typescript/no-explicit-any
+import type { OAuthServerProvider } from "@modelcontextprotocol/sdk/server/auth/provider.js"
+import { Container } from "@sigitex/bind"
 import {
   type BoundService,
   type ConfigOf,
@@ -16,10 +17,14 @@ import {
   type TransportConfig,
   executor,
 } from "@weapon/spec"
-import { type McpMountedTool, mapTools } from "./tools"
+import {
+  type OAuthEngineConfig,
+  createOAuthFetch,
+  createProvider,
+  extractBearerToken,
+} from "./oauthBridge"
 import { ClientStore, CodeStore, TokenStore } from "./stores"
-import { type OAuthEngineConfig, createProvider, createOAuthFetch, extractBearerToken } from "./oauthBridge"
-import type { OAuthServerProvider } from "@modelcontextprotocol/sdk/server/auth/provider.js"
+import { type McpMountedTool, mapTools } from "./tools"
 
 /** Config for {@link connector} — merges auth, stores, and middleware implementations. */
 export type ConnectorConfig<
@@ -66,7 +71,9 @@ export function connector<
       (config as Record<string, unknown>)[k],
     ]),
   ) as {
-    [K in MiddlewareKeysOf<Protocol>]: OperationMiddleware<ConfigOf<Protocol[K]>>
+    [K in MiddlewareKeysOf<Protocol>]: OperationMiddleware<
+      ConfigOf<Protocol[K]>
+    >
   }
 
   const exec = executor(spec, { middleware, services })
@@ -79,7 +86,9 @@ export function connector<
   const hasAuth = !!(transport.config as McpConfig | undefined)?.authenticate
   let provider: OAuthServerProvider | undefined
 
-  let stores: { clients: ClientStore; codes: CodeStore; tokens: TokenStore } | undefined
+  let stores:
+    | { clients: ClientStore; codes: CodeStore; tokens: TokenStore }
+    | undefined
 
   if (hasAuth) {
     stores = {
@@ -93,7 +102,14 @@ export function connector<
   return {
     executor: exec,
     tools,
-    fetch: createFetchHandler(exec, tools, serverInfo, config, provider, stores),
+    fetch: createFetchHandler(
+      exec,
+      tools,
+      serverInfo,
+      config,
+      provider,
+      stores,
+    ),
     serve: createServeHandler(exec, tools, serverInfo, config),
   }
 }
@@ -127,7 +143,10 @@ function createFetchHandler(
     ? createOAuthFetch(provider, config.oauth?.issuerUrl ?? "")
     : null
 
-  async function handle(request: Request, inherited?: Container): Promise<Response> {
+  async function handle(
+    request: Request,
+    inherited?: Container,
+  ): Promise<Response> {
     // Try OAuth routes first (metadata, authorize, token, register, revoke)
     if (oauthFetch) {
       const oauthResponse = await oauthFetch(request)
@@ -143,20 +162,37 @@ function createFetchHandler(
     if (provider && authenticate) {
       const token = extractBearerToken(request)
       if (!token) {
-        return new Response(JSON.stringify({ error: "invalid_token", error_description: "Missing bearer token" }), {
-          status: 401,
-          headers: { "content-type": "application/json" },
-        })
+        return new Response(
+          JSON.stringify({
+            error: "invalid_token",
+            error_description: "Missing bearer token",
+          }),
+          {
+            status: 401,
+            headers: { "content-type": "application/json" },
+          },
+        )
       }
 
-      let verified: { token: string; clientId: string; scopes: string[]; expiresAt?: number }
+      let verified: {
+        token: string
+        clientId: string
+        scopes: string[]
+        expiresAt?: number
+      }
       try {
         verified = await provider.verifyAccessToken(token)
       } catch {
-        return new Response(JSON.stringify({ error: "invalid_token", error_description: "Invalid or expired token" }), {
-          status: 401,
-          headers: { "content-type": "application/json" },
-        })
+        return Response.json(
+          {
+            error: "invalid_token",
+            error_description: "Invalid or expired token",
+          },
+          {
+            status: 401,
+            headers: { "content-type": "application/json" },
+          },
+        )
       }
 
       const oauthInfo: OAuthInfo = {
@@ -178,16 +214,23 @@ function createFetchHandler(
       })
     }
 
-    const body = await request.json() as JsonRpcRequest
+    const body = (await request.json()) as JsonRpcRequest
     const containerSource = authContainer ?? inherited ?? config.container
-    const response = await handleJsonRpc(body, executor, tools, toolsByName, serverInfo, containerSource)
+    const response = await handleJsonRpc(
+      body,
+      executor,
+      tools,
+      toolsByName,
+      serverInfo,
+      containerSource,
+    )
 
     if (response === null) {
       // Notification — no response
       return new Response(null, { status: 204 })
     }
 
-    return new Response(JSON.stringify(response), {
+    return Response.json(response, {
       status: 200,
       headers: {
         "content-type": "application/json",
@@ -213,8 +256,10 @@ function createServeHandler(
 
   return async () => {
     const { Server } = await import("@modelcontextprotocol/sdk/server/index.js")
-    const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js")
-    const { ListToolsRequestSchema, CallToolRequestSchema } = await import("@modelcontextprotocol/sdk/types.js")
+    const { StdioServerTransport } =
+      await import("@modelcontextprotocol/sdk/server/stdio.js")
+    const { ListToolsRequestSchema, CallToolRequestSchema } =
+      await import("@modelcontextprotocol/sdk/types.js")
 
     const server = new Server(serverInfo, {
       capabilities: { tools: {} },
@@ -244,7 +289,9 @@ function createServeHandler(
       )
 
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(response.output) }],
+        content: [
+          { type: "text" as const, text: JSON.stringify(response.output) },
+        ],
       }
     })
 

@@ -1,4 +1,4 @@
-import { Container } from "@weapon/bind"
+import { Container } from "@sigitex/bind"
 import type {
   Executor,
   HttpApiKeyAuthentication,
@@ -96,7 +96,9 @@ export function httpHost<Config extends HttpConfig>(
       const url = new URL(request.url)
 
       const matched = matchOperation(request, url)
-      if (!matched) return new Response("Not Found", { status: 404 })
+      if (!matched) {
+        return new Response("Not Found", { status: 404 })
+      }
 
       const { mounted, params } = matched
 
@@ -117,6 +119,7 @@ export function httpHost<Config extends HttpConfig>(
         const identity = await resolveIdentity(
           request,
           scheme,
+          // oxlint-disable-next-line typescript/no-explicit-any
           config.authenticate as (...args: any[]) => MaybePromise<unknown>,
         )
         if (identity !== undefined) {
@@ -188,7 +191,7 @@ function parseRoute(config: HttpOperationConfig): ParsedRoute {
 function resolveIdentity(
   request: Request,
   scheme: HttpAuthentication<unknown>,
-  authenticate: (...args: any[]) => MaybePromise<unknown>,
+  authenticate: (...args: unknown[]) => MaybePromise<unknown>,
 ): MaybePromise<unknown> {
   switch (scheme.type) {
     case "basic": {

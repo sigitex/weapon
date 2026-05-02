@@ -4,7 +4,6 @@ import type {
   ResponseContext,
   RouteMiddleware,
 } from "../router.types"
-import { randomUUID } from "node:crypto"
 
 export type RequestIdOptions = {
   readonly header?: string
@@ -13,7 +12,7 @@ export type RequestIdOptions = {
 
 export function requestId(options?: RequestIdOptions): RouteMiddleware {
   const header = options?.header ?? HTTP.header.XRequestId
-  const generate = options?.generate ?? (() => randomUUID())
+  const generate = options?.generate ?? (() => crypto.randomUUID())
 
   return {
     before: ({ request, bind }: RequestContext) => {

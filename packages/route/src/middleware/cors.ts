@@ -62,6 +62,7 @@ export function cors(options?: CorsOptions): RouteMiddleware {
         response.headers.set(HTTP.header.AccessControlAllowCredentials, "true")
       }
 
+      // oxlint-disable-next-line no-eq-null -- fix this
       if (maxAge != null) {
         response.headers.set(HTTP.header.AccessControlMaxAge, String(maxAge))
       }

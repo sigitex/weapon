@@ -1,11 +1,10 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: intent */
+// oxlint-disable typescript/no-explicit-any
 import {
   useMutation,
   useQuery,
   type QueryClient as TanStackQueryClient,
 } from "@tanstack/react-query"
-import type { Remote, RemoteConfig } from "@weapon/remote"
-import { remote } from "@weapon/remote"
+import { remote, type Remote, type RemoteConfig } from "@weapon/remote"
 import type {
   Contract,
   DefinesContract,
@@ -115,7 +114,8 @@ type UseHookKey<K extends string> = `use${Capitalize<K>}`
 export type QueryProxy<
   Protocol extends DefinesProtocol,
   ContractDef extends DefinesContract<Protocol>,
-> = { // Options factories: api.users.get.queryOptions(...)
+> = {
+  // Options factories: api.users.get.queryOptions(...)
   readonly [K in keyof ContractDef &
     string as ContractDef[K] extends DefinesOperation<Protocol>
     ? K
@@ -123,7 +123,8 @@ export type QueryProxy<
     InferInput<ContractDef[K]>,
     InferOutput<ContractDef[K]>
   >
-} & { // Direct hooks: api.users.useGet(...)
+} & {
+  // Direct hooks: api.users.useGet(...)
   readonly [K in keyof ContractDef &
     string as ContractDef[K] extends DefinesOperation<Protocol>
     ? UseHookKey<K>
@@ -139,7 +140,8 @@ export type QueryProxy<
           >
         >)
     : never
-} & { // Scopes: api.users.queryKey(), api.users.list.queryOptions(...)
+} & {
+  // Scopes: api.users.queryKey(), api.users.list.queryOptions(...)
   readonly [K in keyof ContractDef &
     string as ContractDef[K] extends DefinesOperation<Protocol>
     ? never
@@ -150,6 +152,7 @@ export type QueryProxy<
 
 // --- Internals ---
 
+// oxlint-disable-next-line typescript/consistent-type-definitions
 interface RemoteProxy {
   [key: string]: ((...args: any[]) => Promise<any>) | RemoteProxy
 }
@@ -212,7 +215,9 @@ function createQueryProxy(
 }
 
 function isQueryMethod(config: HttpOperationConfig | undefined): boolean {
-  if (!config) return false
+  if (!config) {
+    return false
+  }
   const method =
     typeof config === "string"
       ? config.slice(0, config.indexOf(" "))

@@ -1,5 +1,6 @@
 import type { OperationRequest, OperationResponse } from "./executor"
-import type { RedactValue } from "./redact"
+
+type RedactValue = "TODO"
 
 export function audit() {
   // this should return an OperationMiddlewareConfig

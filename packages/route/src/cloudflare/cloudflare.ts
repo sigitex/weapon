@@ -11,10 +11,18 @@ type CloudflareOptions = {
 
 export function cloudflare(options: CloudflareOptions = {}): RequestHandler {
   const assetsKey = options.assets ?? "ASSETS"
-  return ({ env, request, bind }: { env: Env, request: Request, bind: (bindings: { assets: Assets }) => void }) => {
-    // biome-ignore lint/suspicious/noExplicitAny: env binding access
+  return ({
+    env,
+    request,
+    bind,
+  }: {
+    env: Env
+    request: Request
+    bind: (bindings: { assets: Assets }) => void
+  }) => {
+    // oxlint-disable-next-line typescript/no-explicit-any
     const binding = (env as any)[assetsKey] as CloudflareAssets
-    const origin = new URL(request.url).origin
+    const { origin } = new URL(request.url)
     bind({ assets: cloudflareAssets(binding, origin) })
   }
 }
@@ -26,7 +34,9 @@ function cloudflareAssets(binding: CloudflareAssets, origin: string): Assets {
     },
     async file(request) {
       const response = await binding.fetch(request)
-      if (response.status === 404) return undefined
+      if (response.status === 404) {
+        return undefined
+      }
       return response
     },
   }

@@ -1,6 +1,6 @@
-import { randomUUID } from "node:crypto"
 import type { BaseRoot } from "@ark/schema"
 import type { Type } from "arktype"
+import { randomUUID } from "node:crypto"
 
 const defaultSalt = randomUUID()
 
@@ -22,7 +22,9 @@ function traverse(node: BaseRoot, value: unknown, fn: RedactValue): unknown {
 
   if (node.hasKind("union")) {
     const match = node.branches.find((b) => b.allows(value))
-    if (match) return traverse(match, value, fn)
+    if (match) {
+      return traverse(match, value, fn)
+    }
   }
 
   if (node.hasKind("intersection") && node.structure) {
@@ -118,10 +120,10 @@ export namespace redact {
 }
 
 function fnv1a(input: string): bigint {
-  let hash = 0xcbf29ce484222325n
+  let hash = 0xCBF29CE484222325n
   for (let i = 0; i < input.length; i++) {
     hash ^= BigInt(input.charCodeAt(i))
-    hash = BigInt.asUintN(64, hash * 0x100000001b3n)
+    hash = BigInt.asUintN(64, hash * 0x100000001B3n)
   }
   return hash
 }

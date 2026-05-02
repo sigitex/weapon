@@ -16,7 +16,7 @@ export function app(routes: RouteTree): RequestHandler {
 
 function getAppPatterns(tree: RouteTree) {
   const patterns: RegExp[] = []
-  for (const [key, value] of Object.entries(tree)) {
+  for (const [_key, value] of Object.entries(tree)) {
     if (typeof value === "string") {
       patterns.push(RegexParam.parse(value).pattern)
     } else {

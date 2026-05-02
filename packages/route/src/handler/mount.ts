@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: shut up */
+// oxlint-disable typescript/no-explicit-any
 import type { RequestHandler } from "../router.types"
 
 /** Wraps a standard fetch function as a router handler. */

@@ -1,3 +1,5 @@
+// oxlint-disable no-eq-null -- fix this
+// oxlint-disable curly
 import { HTTP } from "../HTTP"
 import type { ResponseContext, RouteMiddleware } from "../router.types"
 

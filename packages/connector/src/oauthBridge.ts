@@ -1,6 +1,6 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: intent */
-import type { OAuthServerProvider } from "@modelcontextprotocol/sdk/server/auth/provider.js"
+// oxlint-disable typescript/no-explicit-any
 import type { OAuthRegisteredClientsStore } from "@modelcontextprotocol/sdk/server/auth/clients.js"
+import type { OAuthServerProvider } from "@modelcontextprotocol/sdk/server/auth/provider.js"
 import type { OAuthClientInformationFull } from "@modelcontextprotocol/sdk/shared/auth.js"
 import type { ClientStore, CodeStore, TokenStore } from "./stores"
 
@@ -28,7 +28,9 @@ export function createProvider(
   const clientsStore: OAuthRegisteredClientsStore = {
     async getClient(clientId) {
       const client = await stores.clients.get(clientId)
-      if (!client) return undefined
+      if (!client) {
+        return undefined
+      }
       return toSdkClient(client)
     },
     async registerClient(metadata) {
@@ -39,7 +41,9 @@ export function createProvider(
       const weaponClient = {
         clientId,
         clientSecret,
-        redirectUris: (metadata.redirect_uris ?? []).map((u: any) => u.toString()),
+        redirectUris: (metadata.redirect_uris ?? []).map((u: any) =>
+          u.toString(),
+        ),
         name: metadata.client_name,
         registeredAt: now,
       }
@@ -88,7 +92,12 @@ export function createProvider(
       return entry.codeChallenge
     },
 
-    async exchangeAuthorizationCode(client, authorizationCode, _codeVerifier, _redirectUri) {
+    async exchangeAuthorizationCode(
+      client,
+      authorizationCode,
+      _codeVerifier,
+      _redirectUri,
+    ) {
       const entry = await stores.codes.consume(authorizationCode)
       if (!entry) throw new Error("Invalid authorization code")
 
@@ -116,7 +125,8 @@ export function createProvider(
     async exchangeRefreshToken(client, refreshToken, scopes) {
       const existing = await stores.tokens.getByRefreshToken(refreshToken)
       if (!existing) throw new Error("Invalid refresh token")
-      if (existing.clientId !== client.client_id) throw new Error("Client mismatch")
+      if (existing.clientId !== client.client_id)
+        throw new Error("Client mismatch")
 
       // Revoke old tokens (rotation)
       await stores.tokens.revoke(existing.accessToken)
@@ -187,16 +197,22 @@ export function createOAuthFetch(
 
   async function ensureServer() {
     if (baseUrl) return
-    if (startPromise) { await startPromise; return }
+    if (startPromise) {
+      await startPromise
+      return
+    }
     startPromise = (async () => {
       const express = (await import("express")).default
-      const { mcpAuthRouter } = await import("@modelcontextprotocol/sdk/server/auth/router.js")
+      const { mcpAuthRouter } =
+        await import("@modelcontextprotocol/sdk/server/auth/router.js")
       const app = express()
       const resolvedIssuer = issuerUrl || "http://localhost"
-      app.use(mcpAuthRouter({
-        provider,
-        issuerUrl: new URL(resolvedIssuer),
-      }))
+      app.use(
+        mcpAuthRouter({
+          provider,
+          issuerUrl: new URL(resolvedIssuer),
+        }),
+      )
       const server = app.listen(0)
       const addr = server.address() as { port: number }
       baseUrl = `http://127.0.0.1:${addr.port}`
@@ -215,9 +231,10 @@ export function createOAuthFetch(
     const proxyResponse = await fetch(proxyUrl, {
       method: request.method,
       headers: request.headers,
-      body: request.method !== "GET" && request.method !== "HEAD"
-        ? request.body
-        : undefined,
+      body:
+        request.method !== "GET" && request.method !== "HEAD"
+          ? request.body
+          : undefined,
       redirect: "manual",
     })
 
@@ -249,7 +266,14 @@ export function extractBearerToken(request: Request): string | null {
 
 // --- Helpers ---
 
-function toSdkClient(client: { clientId: string; clientSecret?: string; redirectUris: string[]; name?: string; registeredAt: number; secretExpiresAt?: number }): OAuthClientInformationFull {
+function toSdkClient(client: {
+  clientId: string
+  clientSecret?: string
+  redirectUris: string[]
+  name?: string
+  registeredAt: number
+  secretExpiresAt?: number
+}): OAuthClientInformationFull {
   return {
     client_id: client.clientId,
     client_secret: client.clientSecret,

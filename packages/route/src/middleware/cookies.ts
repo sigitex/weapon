@@ -67,6 +67,7 @@ function serializeCookie(
   if (options.domain) cookie += `; Domain=${options.domain}`
   if (options.expires) cookie += `; Expires=${options.expires.toUTCString()}`
   if (options.httpOnly) cookie += "; HttpOnly"
+  // oxlint-disable-next-line no-eq-null
   if (options.maxAge != null) cookie += `; Max-Age=${options.maxAge}`
   if (options.path) cookie += `; Path=${options.path}`
   if (options.sameSite) cookie += `; SameSite=${options.sameSite}`

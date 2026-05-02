@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: intent */
+// oxlint-disable typescript/no-explicit-any
 import type {
   Contract,
   DefinesContract,
@@ -11,7 +11,7 @@ import type {
   HttpOperationConfig,
   Spec,
   TransportConfig,
-} from "@weapon/spec"
+} from "@weapon/spec";
 
 /**
  * Creates a typed client that mirrors a spec's contract as async functions.
@@ -97,7 +97,9 @@ export type Remote<
   ContractDef extends DefinesContract<Protocol>,
 > = {
   [K in keyof ContractDef]: ContractDef[K] extends DefinesOperation<Protocol>
-    ? (input: ContractDef[K]["input"]["infer"]) => Promise<ContractDef[K]["output"]["infer"]>
+    ? (
+        input: ContractDef[K]["input"]["infer"],
+      ) => Promise<ContractDef[K]["output"]["infer"]>
     : ContractDef[K] extends DefinesContract<Protocol>
       ? Remote<Protocol, ContractDef[K]>
       : never
@@ -144,11 +146,18 @@ function createProxy<
 
 type ResolvedRoute = { method: string; path: string }
 
-function parseHttpRoute(config: HttpOperationConfig | undefined): ResolvedRoute {
-  if (!config) return { method: "POST", path: "/" }
+function parseHttpRoute(
+  config: HttpOperationConfig | undefined,
+): ResolvedRoute {
+  if (!config) {
+    return { method: "POST", path: "/" }
+  }
   if (typeof config === "string") {
     const spaceIdx = config.indexOf(" ")
-    return { method: config.slice(0, spaceIdx), path: config.slice(spaceIdx + 1) }
+    return {
+      method: config.slice(0, spaceIdx),
+      path: config.slice(spaceIdx + 1),
+    }
   }
   return { method: config.method, path: config.path }
 }
@@ -164,11 +173,15 @@ async function call(
   const { method, url } = buildRequest(route, input, config.base)
 
   const headers: Record<string, string> = {
-    ...(typeof config.headers === "function" ? config.headers() : config.headers),
+    ...(typeof config.headers === "function"
+      ? config.headers()
+      : config.headers),
   }
 
   // Apply auth credentials
-  const authenticate = (config as { authenticate?: () => MaybePromise<unknown> }).authenticate
+  const authenticate = (
+    config as { authenticate?: () => MaybePromise<unknown> }
+  ).authenticate
   if (authenticate && authSchemes.length > 0) {
     const credentials = await authenticate()
     applyCredentials(headers, authSchemes[0], credentials)
@@ -186,7 +199,11 @@ async function call(
   })
 
   if (!response.ok) {
-    throw new RemoteError(response.status, response.statusText, await response.text())
+    throw new RemoteError(
+      response.status,
+      response.statusText,
+      await response.text(),
+    )
   }
 
   if (response.status === 204) return undefined
@@ -205,7 +222,10 @@ function applyCredentials(
 ) {
   switch (scheme.type) {
     case "basic": {
-      const { username, password } = credentials as { username: string; password: string }
+      const { username, password } = credentials as {
+        username: string
+        password: string
+      }
       headers.authorization = `Basic ${btoa(`${username}:${password}`)}`
       break
     }
@@ -237,7 +257,10 @@ function buildRequest(
   base: string,
 ): { method: string; url: string } {
   let path = route.path
-  let remaining = input && typeof input === "object" ? { ...input as Record<string, unknown> } : {}
+  let remaining =
+    input && typeof input === "object"
+      ? { ...(input as Record<string, unknown>) }
+      : {}
 
   // Substitute path params: /teams/{id} → /teams/abc
   path = path.replace(/\{(\w+)\}/g, (_, key: string) => {

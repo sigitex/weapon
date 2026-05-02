@@ -18,10 +18,11 @@
     "url": "https://github.com/sigitex/weapon.git"
   },
   "devDependencies": {
+    "@sigitex/ssjs": "workspace:*",
     "@typescript/native-preview": "beta"
   },
   "scripts": {
-    "check": "tsgo --noEmit",
+    "check": "tsgo --noEmit && find . -mindepth 2 -name tsconfig.json -not -path '*/node_modules/*' -exec tsgo --noEmit -p {} \\;",
     "test": "bun test --pass-with-no-tests"
   },
   "files": [

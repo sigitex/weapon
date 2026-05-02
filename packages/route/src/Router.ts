@@ -1,4 +1,4 @@
-import type { Container } from "@weapon/bind"
+import type { Container } from "@sigitex/bind"
 import type {
   RequestHandler,
   RouterOptions,
@@ -45,7 +45,7 @@ export class Router {
       return fail(500, "Internal server error.")
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: shut up>
+    // oxlint-disable-next-line typescript/no-explicit-any
     async function bind(bindings: { [key: string]: any }) {
       if (container) {
         container.bind(bindings)
