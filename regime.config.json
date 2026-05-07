@@ -1,6 +1,8 @@
 {
   "templates": [
-    "monorepo-root"
+    "profile/monorepo/root",
+    "workflow/mirror",
+    "workflow/publish-npm"
   ],
   "vars": {
     "repo": "weapon"

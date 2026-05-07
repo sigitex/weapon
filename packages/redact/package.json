@@ -9,7 +9,8 @@
     "@ark/schema": "catalog:",
     "@sigitex/ssjs": "workspace:*",
     "arktype": "catalog:",
-    "@typescript/native-preview": "beta"
+    "@typescript/native-preview": "beta",
+    "@types/bun": "^1.3.13"
   },
   "license": "MIT",
   "author": {
@@ -21,8 +22,8 @@
     "url": "https://github.com/sigitex/weapon.git"
   },
   "scripts": {
-    "check": "tsgo --noEmit && find . -mindepth 2 -name tsconfig.json -not -path '*/node_modules/*' -exec tsgo --noEmit -p {} \\;",
-    "test": "bun test --pass-with-no-tests"
+    "check": "tsgo --build",
+    "test": "bun test --pass-with-no-tests --tsconfig-override tsconfig.test.json"
   },
   "files": [
     "src"

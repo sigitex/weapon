@@ -2,7 +2,7 @@ import { defineConfig } from "oxlint"
 
 export default defineConfig({
   plugins: ["typescript", "unicorn", "oxc"],
-  ignorePatterns: ["**/*.gen.ts"],
+  ignorePatterns: ["**/*.gen.ts", "node_modules/**/*"],
   categories: {
     correctness: "error",
     suspicious: "warn",
@@ -26,11 +26,13 @@ export default defineConfig({
     "no-await-in-loop": "off",
     "no-bitwise": "off",
     "no-console": "off",
+    "no-continue": "off",
     "no-dynamic-delete": "off",
     "no-empty-file": "off",
     "no-empty-function": "off",
     "no-implicit-coercion": "off",
     "no-magic-numbers": "off",
+    "no-multi-assign": "off",
     "no-nested-ternary": "off",
     "unicorn/no-nested-ternary": "off",
     "no-null": "off",
@@ -44,6 +46,7 @@ export default defineConfig({
     "no-underscore-dangle": "off",
     "no-use-before-define": "off",
     "unicorn/numeric-separators-style": "off",
+    "prefer-destructuring": "off",
     "prefer-for-of": "off",
     "prefer-template": "off",
     "prefer-ternary": "off",
@@ -67,11 +70,16 @@ export default defineConfig({
       files: ["*.test.ts"],
       rules: {
         "typescript/no-explicit-any": "off",
+        "typescript/no-require-imports": "off",
+        "typescript/no-var-requires": "off",
+        "unicorn/prefer-module": "off",
+        "unicorn/consistent-function-scoping": "off",
       },
     },
     {
       files: ["*.d.ts"],
       rules: {
+        "typescript/no-explicit-any": "off",
         "unicorn/consistent-function-scoping": "off",
         "typescript/consistent-type-definitions": "off",
       },

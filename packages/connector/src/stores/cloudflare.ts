@@ -56,7 +56,9 @@ export namespace cloudflare {
     return {
       async get(clientId) {
         const raw = await kv.get(`${prefix}${clientId}`)
-        if (!raw) return null
+        if (!raw) {
+          return null
+        }
         const client = JSON.parse(raw) as OAuthClient
         if (client.secretExpiresAt && client.secretExpiresAt < Date.now()) {
           await kv.delete(`${prefix}${clientId}`)
@@ -79,10 +81,14 @@ export namespace cloudflare {
       },
       async consume(code) {
         const raw = await kv.get(`${prefix}${code}`)
-        if (!raw) return null
+        if (!raw) {
+          return null
+        }
         await kv.delete(`${prefix}${code}`)
         const entry = JSON.parse(raw) as AuthorizationCode
-        if (entry.expiresAt < Date.now()) return null
+        if (entry.expiresAt < Date.now()) {
+          return null
+        }
         return entry
       },
     }

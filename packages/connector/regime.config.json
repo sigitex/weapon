@@ -1,6 +1,6 @@
 {
   "templates": [
-    "monorepo-package"
+    "profile/monorepo/library"
   ],
   "vars": {
     "repo": "weapon"

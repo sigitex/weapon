@@ -1,3 +1,4 @@
+import "./global"
 export * from "./spec"
 export * from "./http"
 export * from "./mcp"
