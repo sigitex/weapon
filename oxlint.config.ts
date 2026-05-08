@@ -30,6 +30,7 @@ export default defineConfig({
     "no-dynamic-delete": "off",
     "no-empty-file": "off",
     "no-empty-function": "off",
+    "no-eq-null": "warn",
     "no-implicit-coercion": "off",
     "no-magic-numbers": "off",
     "no-multi-assign": "off",
@@ -74,6 +75,7 @@ export default defineConfig({
         "typescript/no-var-requires": "off",
         "unicorn/prefer-module": "off",
         "unicorn/consistent-function-scoping": "off",
+        "func-names": "off",
       },
     },
     {
