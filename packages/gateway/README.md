@@ -1,6 +1,6 @@
 # @weapon/gateway
 
-Server-side HTTP host for [weapon](../../README.md).
+Server-side HTTP host [weapon](https://github.com/sigitex/weapon).
 
 > 🚧 Experimental
 

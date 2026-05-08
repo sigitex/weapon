@@ -1,6 +1,6 @@
 # @weapon/redact
 
-Sensitive field redaction for [weapon](../../README.md).
+Sensitive field redaction [weapon](https://github.com/sigitex/weapon).
 
 > 🚧 Experimental
 

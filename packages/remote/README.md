@@ -1,6 +1,6 @@
 # @weapon/remote
 
-Typed HTTP client for [weapon](../../README.md).
+Typed HTTP client [weapon](https://github.com/sigitex/weapon).
 
 > 🚧 Experimental
 

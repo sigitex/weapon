@@ -1,6 +1,6 @@
 # @weapon/query
 
-TanStack React Query bindings for [weapon](../../README.md).
+TanStack React Query bindings [weapon](https://github.com/sigitex/weapon).
 
 > 🚧 Experimental
 

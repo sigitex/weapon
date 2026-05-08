@@ -1,6 +1,6 @@
 # @weapon/spec
 
-Core package for [weapon](../../README.md).
+Core package [weapon](https://github.com/sigitex/weapon).
 
 > **Note:** This package currently exports TypeScript sources directly. A TypeScript-compatible runtime or bundler (Bun, etc.) is required.
 
