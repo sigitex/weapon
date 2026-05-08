@@ -1,4 +1,5 @@
 // oxlint-disable typescript/no-explicit-any
+import "@sigitex/ssjs"
 import {
   useMutation,
   useQuery,

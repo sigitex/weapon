@@ -6,8 +6,6 @@ declare var URLSearchParams: {
   new (init?: string | Record<string, string> | [string, string][]): URLSearchParams
 }
 
-declare type MaybePromise<T> = T | Promise<T>
-
 declare function btoa(input: string): string
 
 declare type HeadersInit = Record<string, string> | [string, string][]
