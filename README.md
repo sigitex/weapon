@@ -230,7 +230,7 @@ queryClient.invalidateQueries({ queryKey: Q.tasks.queryKey() }) // all tasks
                    │  Transports      │
                    │  ├─ http         │
                    │  └─ mcp          │
-                   │  Middleware       │
+                   │  Middleware      │
                    │  └─ authorize    │
                    │  Contract        │
                    │  └─ operations   │
@@ -244,7 +244,7 @@ queryClient.invalidateQueries({ queryKey: Q.tasks.queryKey() }) // all tasks
    ┌────────┴────┐   ┌──────┴──────┐   ┌───┴──────┐
    │   Gateway   │   │  Connector  │   │  Remote  │
    │   (HTTP)    │   │   (MCP)     │   │  (HTTP)  │
-   └────────┬────┘   └──────┬──────┘   └───┬──────┘
+   └────────┬────┘   └──────┬──────┘   └────┬─────┘
             │               │               │
             └───────┬───────┘          ┌────┴─────┐
                     │                  │  Query   │
