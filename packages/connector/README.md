@@ -1,6 +1,6 @@
 # @weapon/connector
 
-Server-side MCP (Model Context Protocol) host for [weapon](../../README.md).
+Server-side MCP (Model Context Protocol) host for [weapon](https://github.com/sigitex/weapon).
 
 > 🚧 Experimental
 
