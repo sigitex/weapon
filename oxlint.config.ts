@@ -65,6 +65,9 @@ export default defineConfig({
     "typescript/no-namespace": "off",
     "typescript/no-non-null-assertion": "off",
     "typescript/prefer-function-type": "off",
+    "unicorn/no-process-exit": "off",
+    "unicorn/prefer-string-raw": "off",
+    "unicorn/text-encoding-identifier-case": "off",
   },
   overrides: [
     {

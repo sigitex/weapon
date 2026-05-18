@@ -1,33 +1,12 @@
 # Weapon
 
-Contract-driven APIs for TypeScript.
+Contract-driven APIs for TypeScript, powered by [ArkType](https://arktype.io).
 
-Define your API once — serve it over HTTP and MCP, consume it with typed clients and React Query hooks.
+Define your API contract with runtime-validated types, serve it over multiple transports (HTTP and MCP currently), and consume it with fully typed clients.
 
-Weapon is a collection of packages that share a single, declarative **spec**. The spec describes your operations, transports, and middleware. Server packages wire it to protocol engines. Client packages generate typed callers from it. Nothing is duplicated.
+## Define a Contract
 
-## Packages
-
-| Package | Description |
-|---|---|
-| [`@weapon/spec`](packages/spec) | Core definitions — specs, contracts, operations, executor, transport declarations |
-| [`@weapon/gateway`](packages/gateway) | Server-side HTTP host — route matching, auth resolution, request/response lifecycle |
-| [`@weapon/connector`](packages/connector) | Server-side MCP host — JSON-RPC (Streamable HTTP) and stdio transports with OAuth |
-| [`@weapon/remote`](packages/remote) | Typed HTTP client — mirrors a contract as async functions |
-| [`@weapon/query`](packages/query) | TanStack React Query bindings — `useQuery`/`useMutation` hooks from a spec |
-| [`@weapon/redact`](packages/redact) | Sensitive field redaction using arktype metadata |
-
-## Core Concepts
-
-### Spec
-
-A **spec** is the single source of truth for your API. It declares:
-
-- **Transports** — how operations are exposed (HTTP routes, MCP tools)
-- **Middleware** — cross-cutting concerns (authorization, rate limiting)
-- **Contract** — the operations themselves (input/output types, per-transport config)
-
-Specs carry no server-side implementation. They are safe to import on both client and server.
+A contract is a set of operations with validated inputs and outputs. Use `spec()` to declare your contract along with the transports and middleware it supports:
 
 ```ts
 import { spec, http, mcp, type OperationMiddlewareConfig } from "@weapon/spec"
@@ -74,58 +53,38 @@ export const Spec = spec(
 )
 ```
 
-### Contract
+Every `input` and `output` is an [ArkType](https://arktype.io) type. ArkType gives you concise type syntax with full runtime validation -- your contract types are enforced at the boundary, not just at compile time.
 
-A **contract** is the set of operations (and nested scopes) created from a spec. Operations declare `input` and `output` as [arktype](https://arktype.io) types, plus per-transport configuration.
-
-Contracts can nest. In the example above, `tasks` is a **scope** containing three operations. Scopes are recursive — you can nest scopes inside scopes.
-
-```ts
-Spec.contract.operations       // top-level operations (none in this example)
-Spec.contract.scopes           // { tasks: Contract }
-Spec.contract.tasks.operations // { list, create, get }
-```
-
-### Service
+## Implement It
 
 A **service** is the protocol-agnostic implementation of a contract. Each operation maps to a handler function that receives validated input and a dependency injector.
 
 ```ts
 const TaskService = Spec.contract.tasks.service({
-  async list(input, ctx) {
-    const tasks = await ctx.db.query("SELECT * FROM tasks")
+  async list(_, { db }: { db: Database }) {
+    const tasks = await db.query("SELECT * FROM tasks")
     return tasks
   },
 
-  async create(input, ctx) {
-    const task = { id: crypto.randomUUID(), ...input, done: false }
-    await ctx.db.insert("tasks", task)
+  async create({ title }, { db }) {
+    const task = { id: crypto.randomUUID(), title, done: false }
+    await db.insert("tasks", task)
     return task
   },
 
-  async get(input, ctx) {
-    return await ctx.db.queryOne("SELECT * FROM tasks WHERE id = ?", [input.id])
+  async get({ id }, { db }) {
+    return await db.queryOne("SELECT * FROM tasks WHERE id = ?", [id])
   },
 })
 ```
 
-Services are bound to their contract via `contract.service(impl)`, producing a `BoundService` that the executor can mount.
+Services are bound to their contract via `contract.service(impl)`, producing a `BoundService` that can be mounted on any transport.
 
-### Executor
-
-The **executor** is the protocol engine. It takes a spec, middleware implementations, and services, then runs the request lifecycle:
-
-1. **Validate input** (arktype)
-2. **Middleware `onRequest`** hooks (declaration order)
-3. **Service handler** (with dependency injection)
-4. **Middleware `onResponse`** hooks (reverse order)
-5. **Return result**
-
-The executor has no opinion about protocols — transports (gateway, connector) sit outside it and translate between their native format and `OperationRequest`/`OperationResponse`.
+## Serve It
 
 ### Gateway (HTTP)
 
-The **gateway** wires a spec to an HTTP server. It matches incoming requests to operations by method + path, resolves authentication, parses input from the body/query/path params, calls the executor, and serializes the response.
+The **gateway** wires your contract to an HTTP server. It matches incoming requests to operations by method + path, resolves authentication, parses input from the body/query/path params, and serializes the response.
 
 ```ts
 import { gateway } from "@weapon/gateway"
@@ -149,13 +108,13 @@ const api = gateway(
   [TaskService],
 )
 
-// api.fetch is a standard Request → Response handler
+// api.fetch is a standard Request -> Response handler
 Bun.serve({ fetch: api.fetch })
 ```
 
 ### Connector (MCP)
 
-The **connector** wires a spec to an MCP server. Operations with `mcp` config become tools. Supports both Streamable HTTP (JSON-RPC over fetch) and stdio transports.
+The **connector** wires your contract to an MCP server. Operations with `mcp` config become tools. Supports both Streamable HTTP (JSON-RPC over fetch) and stdio transports.
 
 ```ts
 import { connector } from "@weapon/connector"
@@ -180,9 +139,11 @@ Bun.serve({ fetch: mcp.fetch })
 await mcp.serve()
 ```
 
+## Call It
+
 ### Remote (HTTP Client)
 
-The **remote** client mirrors a contract as typed async functions. It reads the HTTP route config from each operation to build requests automatically.
+The **remote** client mirrors your contract as typed async functions. It reads the HTTP route config from each operation to build requests automatically.
 
 ```ts
 import { remote } from "@weapon/remote"
@@ -197,69 +158,45 @@ const task = await api.tasks.create({ title: "Buy milk" })
 const found = await api.tasks.get({ id: task.id })
 ```
 
-### Query (React Query)
+There is also an [experimental `query` package](https://github.com/sigitex/weapon/tree/main/packages/query) integrating with [TanStack Query](https://tanstack.com/query/latest).
 
-The **query** package wraps a remote client with TanStack React Query hooks. GET operations become queries; non-GET operations become mutations.
+## Scopes
+
+Contracts can nest arbitrarily via scopes:
 
 ```ts
-import { query } from "@weapon/query"
+const Spec = spec({ http: http() }, {
+  users: {
+    list: { http: "GET /users", input: type({}), output: type({}).array() },
+    get: { http: "GET /users/{id}", input: type({ id: "string" }), output: type({}) },
+    settings: {
+      get: { http: "GET /users/{id}/settings", input: type({ id: "string" }), output: type({}) },
+      update: { http: "PUT /users/{id}/settings", input: type({ id: "string" }), output: type({}) },
+    },
+  },
+})
 
-const Q = query(Spec, api)
-
-// Direct hooks
-function TaskList() {
-  const { data } = Q.tasks.useList({})
-  const create = Q.tasks.useCreate()
-  // ...
-}
-
-// Options factories (for prefetching, invalidation, etc.)
-useQuery(Q.tasks.list.queryOptions({}))
-useMutation(Q.tasks.create.mutationOptions())
-
-// Query keys (for cache invalidation)
-queryClient.invalidateQueries({ queryKey: Q.tasks.list.queryKey({}) })
-queryClient.invalidateQueries({ queryKey: Q.tasks.queryKey() }) // all tasks
+// Services mirror the structure
+const UserService = Spec.contract.users.service({
+  list: async (input, ctx) => { ... },
+  get: async (input, ctx) => { ... },
+  settings: {
+    get: async (input, ctx) => { ... },
+    update: async (input, ctx) => { ... },
+  },
+})
 ```
 
-## Architecture
+Scopes are also reflected in clients:
 
-```
-                        Spec (shared)
-                   ┌──────────────────┐
-                   │  Transports      │
-                   │  ├─ http         │
-                   │  └─ mcp          │
-                   │  Middleware      │
-                   │  └─ authorize    │
-                   │  Contract        │
-                   │  └─ operations   │
-                   │     └─ scopes    │
-                   └────────┬─────────┘
-                            │
-            ┌───────────────┼───────────────┐
-            │               │               │
-       Server-side     Server-side      Client-side
-            │               │               │
-   ┌────────┴────┐   ┌──────┴──────┐   ┌───┴──────┐
-   │   Gateway   │   │  Connector  │   │  Remote  │
-   │   (HTTP)    │   │   (MCP)     │   │  (HTTP)  │
-   └────────┬────┘   └──────┬──────┘   └────┬─────┘
-            │               │               │
-            └───────┬───────┘          ┌────┴─────┐
-                    │                  │  Query   │
-              ┌─────┴──────┐           │  (React) │
-              │  Executor  │           └──────────┘
-              │            │
-              │ Middleware │
-              │  Service   │
-              │            │
-              └────────────┘
+```ts
+await api.users.list({})
+await api.users.settings.get({ id: "123" })
 ```
 
 ## Authentication
 
-Weapon separates auth **declaration** (in the spec) from auth **resolution** (in the gateway/connector).
+Weapon separates auth **declaration** (in the contract) from auth **resolution** (in the gateway/connector).
 
 ### Declaring Auth Schemes
 
@@ -287,19 +224,19 @@ The generic parameter (`<User>`) is the identity type your resolver returns. It 
 On the server, you provide a resolver that matches the declared scheme:
 
 ```ts
-// Cookie → resolver receives the cookie value
+// Cookie -> resolver receives the cookie value
 gateway(Spec, Spec.transports.http, {
   authenticate: (sessionId: string) => lookupUser(sessionId),
   // ...
 })
 
-// Bearer → resolver receives the token
+// Bearer -> resolver receives the token
 gateway(Spec, Spec.transports.http, {
   authenticate: (token: string) => verifyJwt(token),
   // ...
 })
 
-// Basic → resolver receives username + password
+// Basic -> resolver receives username + password
 gateway(Spec, Spec.transports.http, {
   authenticate: (username: string, password: string) => verifyCredentials(username, password),
   // ...
@@ -310,7 +247,7 @@ The resolved identity is bound into the DI container as `identity` and is availa
 
 ## Middleware
 
-Middleware is declared in the spec and configured per-operation:
+Middleware is declared in the contract and configured per-operation:
 
 ```ts
 // Declaration (spec-level)
@@ -352,47 +289,12 @@ gateway(Spec, Spec.transports.http, {
 
 `onRequest` runs before the handler (use for authorization, rate limiting, validation). `onResponse` runs after (use for audit logging, response transforms). Both are optional.
 
-## Scopes
-
-Contracts can nest arbitrarily via scopes:
-
-```ts
-const Spec = spec({ http: http() }, {
-  users: {
-    list: { http: "GET /users", input: type({}), output: type({}).array() },
-    get: { http: "GET /users/{id}", input: type({ id: "string" }), output: type({}) },
-    settings: {
-      get: { http: "GET /users/{id}/settings", input: type({ id: "string" }), output: type({}) },
-      update: { http: "PUT /users/{id}/settings", input: type({ id: "string" }), output: type({}) },
-    },
-  },
-})
-
-// Services mirror the structure
-const UserService = Spec.contract.users.service({
-  list: async (input, ctx) => { ... },
-  get: async (input, ctx) => { ... },
-  settings: {
-    get: async (input, ctx) => { ... },
-    update: async (input, ctx) => { ... },
-  },
-})
-```
-
-Scopes are also reflected in clients:
-
-```ts
-await api.users.list({})
-await api.users.settings.get({ id: "123" })
-```
-
 ## Tech Stack
 
 - **Runtime:** [Bun](https://bun.sh)
 - **Validation:** [arktype](https://arktype.io) 2.x
 - **MCP SDK:** [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/typescript-sdk)
 - **Route matching:** [regexparam](https://github.com/lukeed/regexparam)
-- **React Query:** [@tanstack/react-query](https://tanstack.com/query) 5.x
 
 ## License
 
