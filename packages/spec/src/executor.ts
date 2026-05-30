@@ -28,6 +28,7 @@ export type OperationResponse = {
 /** A flattened operation — pairs its definition with its service handler. Produced by `collectOperations()`. */
 export type MountedOperation = {
   readonly key: string
+  readonly path: readonly string[]
   readonly definition: DefinesOperation<DefinesProtocol>
   readonly handler: (input: unknown, context: unknown) => MaybePromise<unknown>
 }
@@ -94,7 +95,12 @@ export function executor<Protocol extends DefinesProtocol>(
 ): Executor {
   const operations: MountedOperation[] = []
   for (const entry of config.services) {
-    mountOperations(entry.contract as Contract<any, any>, entry.service as Record<string, unknown>, operations)
+    mountOperations(
+      entry.contract as Contract<any, any>,
+      entry.service as Record<string, unknown>,
+      operations,
+      [],
+    )
   }
 
   const middleware = Object.entries(spec.middleware)
@@ -139,12 +145,14 @@ function mountOperations(
   contract: Contract<any, any>,
   handlers: Record<string, unknown>,
   entries: MountedOperation[],
+  path: string[],
 ) {
   for (const [key, definition] of Object.entries(contract.operations)) {
     const handler = handlers[key]
     if (typeof handler === "function") {
       entries.push({
         key,
+        path: [...path, key],
         definition: definition as MountedOperation["definition"],
         handler: handler as MountedOperation["handler"],
       })
@@ -157,6 +165,7 @@ function mountOperations(
         scope as Contract<any, any>,
         scopeHandlers as Record<string, unknown>,
         entries,
+        [...path, key],
       )
     }
   }
