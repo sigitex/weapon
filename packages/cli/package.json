@@ -1,0 +1,30 @@
+{
+  "name": "@weapon/cli",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@sigitex/bind": "workspace:*",
+    "@weapon/spec": "workspace:*",
+    "arktype": "catalog:"
+  },
+  "devDependencies": {
+    "@typescript/native-preview": "beta",
+    "@types/bun": "^1.3.13"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Sigitex",
+    "url": "https://github.com/sigitex"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sigitex/weapon.git"
+  },
+  "scripts": {
+    "check": "tsgo --build",
+    "test": "bun test --pass-with-no-tests --tsconfig-override tsconfig.test.json"
+  },
+  "files": [
+    "src"
+  ]
+}

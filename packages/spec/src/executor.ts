@@ -114,6 +114,9 @@ export function executor<Protocol extends DefinesProtocol>(
 
     async handle(request: OperationRequest, container: Container): Promise<OperationResponse> {
       const validatedInput = request.mounted.definition.input(request.input)
+      if (isArkErrors(validatedInput)) {
+        validatedInput.throw()
+      }
 
       for (const mw of middleware) {
         const opConfig = (request.mounted.definition as Record<string, unknown>)[mw.key]
@@ -136,6 +139,10 @@ export function executor<Protocol extends DefinesProtocol>(
       return { output }
     },
   }
+}
+
+function isArkErrors(value: unknown): value is { throw(): never } {
+  return !!value && typeof value === "object" && (value as Record<string, unknown>)[" arkKind"] === "errors"
 }
 
 // --- Internals ---
