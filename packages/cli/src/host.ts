@@ -260,6 +260,10 @@ function setField(input: Record<string, unknown>, field: CliField, value: unknow
     input[field.key] = Array.isArray(existing) ? [...existing, value] : [value]
     return
   }
+  if (field.boolean) {
+    input[field.key] = value
+    return
+  }
   if (input[field.key] !== undefined) throw new Error(`Repeated option: --${field.option}`)
   input[field.key] = value
 }

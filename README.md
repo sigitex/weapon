@@ -2,7 +2,7 @@
 
 Contract-driven APIs for TypeScript, powered by [ArkType](https://arktype.io).
 
-Define your API contract with runtime-validated types, serve it over multiple transports (HTTP and MCP currently), and consume it with fully typed clients.
+Define your API contract with runtime-validated types, serve it over multiple transports (HTTP, MCP, and CLI), and consume it with fully typed clients.
 
 ## Define a Contract
 
@@ -138,6 +138,36 @@ Bun.serve({ fetch: mcp.fetch })
 // Or stdio
 await mcp.serve()
 ```
+
+### CLI
+
+The **CLI adapter** can expose contract operations as commands, or define small CLIs with the high-level `command()` API.
+
+```ts
+import { command } from "@weapon/cli"
+import { type } from "arktype"
+
+const app = command({
+  cli: { name: "tasks", description: "Task manager" },
+  operations: {
+    list: {
+      description: "List tasks",
+      input: type({
+        project: command.string({ arg: true, description: "Project id" }),
+        limit: command.integer({ short: "l", label: "Limit" }),
+        done: command.boolean({ short: "d" }),
+      }),
+      run(input) {
+        return input
+      },
+    },
+  },
+})
+
+await app.main()
+```
+
+`command()` returns the normalized `spec`, `services`, `executor`, `commands`, `run`, `main`, and `help`, so lower-level adapters can still compose with the same Weapon model.
 
 ## Call It
 
