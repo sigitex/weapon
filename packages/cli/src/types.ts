@@ -1,10 +1,12 @@
 import type { Container } from "@sigitex/bind"
+import type { Type } from "arktype"
 import type { Executor, MountedOperation } from "@weapon/spec"
 
 export type CliRuntimeConfig = {
   readonly container?: Container
   readonly stdout?: (text: string) => void | Promise<void>
   readonly stderr?: (text: string) => void | Promise<void>
+  readonly options?: Type
 }
 
 export type CliMountedCommand = {

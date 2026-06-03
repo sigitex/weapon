@@ -4,6 +4,7 @@ import type { CliField, CliMountedCommand } from "./types"
 export function rootHelp(
   config: CliConfig | undefined,
   commands: readonly CliMountedCommand[],
+  globalFields: readonly CliField[] = [],
 ): string {
   const lines = [config?.name ?? "Commands"]
   if (config?.description) {
@@ -23,18 +24,23 @@ export function rootHelp(
     )
   }
   lines.push(`  ${pad("help", 24)}Show help`.trimEnd())
+  addFields(lines, "Global Options:", globalFields.filter((f) => !f.hidden))
   return lines.join("\n")
 }
 
-export function commandHelp(command: CliMountedCommand): string {
-  const lines = [command.path.join(" ")]
+export function commandHelp(
+  command: CliMountedCommand,
+  globalFields: readonly CliField[] = [],
+): string {
+  const commandPath = command.path.join(" ")
+  const lines = [commandPath || "root"]
   if (command.description) {
     lines.push("", command.description)
   }
   lines.push(
     "",
     "Usage:",
-    `  ${command.path.join(" ")} ${usageFields(command)}`.trimEnd(),
+    `  ${commandPath} ${usageFields(command, globalFields)}`.trimEnd(),
   )
   const args = command.fields.filter((f) => f.arg !== undefined && !f.hidden)
   const opts = command.fields.filter((f) => f.arg === undefined && !f.hidden)
@@ -46,15 +52,8 @@ export function commandHelp(command: CliMountedCommand): string {
       )
     }
   }
-  if (opts.length > 0) {
-    lines.push("", "Options:")
-    for (const field of opts) {
-      const name = `${field.short ? `-${field.short}, ` : ""}--${field.option}${field.boolean ? "" : ` <${field.key}>`}`
-      lines.push(
-        `  ${pad(name, 24)}${field.description ?? field.key}`.trimEnd(),
-      )
-    }
-  }
+  addFields(lines, "Options:", opts)
+  addFields(lines, "Global Options:", globalFields.filter((f) => !f.hidden))
   return lines.join("\n")
 }
 
@@ -69,14 +68,28 @@ export function isRootHelp(argv: readonly string[]): boolean {
   )
 }
 
-function usageFields(command: CliMountedCommand): string {
+function usageFields(
+  command: CliMountedCommand,
+  globalFields: readonly CliField[],
+): string {
   const args = command.fields
     .filter((f) => f.arg !== undefined && !f.hidden)
     .map((f) => `<${argName(f)}>`)
-  const hasOptions = command.fields.some(
+  const hasOptions = [...command.fields, ...globalFields].some(
     (f) => f.arg === undefined && !f.hidden,
   )
   return [...args, hasOptions ? "[options]" : ""].filter(Boolean).join(" ")
+}
+
+function addFields(lines: string[], title: string, fields: readonly CliField[]) {
+  if (fields.length === 0) {
+    return
+  }
+  lines.push("", title)
+  for (const field of fields) {
+    const name = `${field.short ? `-${field.short}, ` : ""}--${field.option}${field.boolean ? "" : ` <${field.key}>`}`
+    lines.push(`  ${pad(name, 24)}${field.description ?? field.key}`.trimEnd())
+  }
 }
 
 function pad(text: string, width: number): string {

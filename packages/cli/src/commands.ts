@@ -36,7 +36,7 @@ export function mapCommands(
       description: config?.description ?? mounted.definition.description,
       hidden: config?.hidden === true,
       format: config?.format,
-      fields: getFields(mounted),
+      fields: fieldsFromType(mounted.definition.input),
     }
 
     assertClaim(claimed, path, path.join(" "))
@@ -52,8 +52,8 @@ export function mapCommands(
   )
 }
 
-function getFields(mounted: MountedOperation): CliField[] {
-  const type = mounted.definition.input as any
+export function fieldsFromType(input: unknown): CliField[] {
+  const type = input as any
   const props = type.structure?.props
   if (!Array.isArray(props)) {
     return []
@@ -112,7 +112,7 @@ export function positionalIndex(field: CliField): number {
 
 function splitCommandPath(path: string): string[] {
   const parts = path.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) {
+  if (parts.length === 0 && path !== "") {
     throw new Error("Command path cannot be empty")
   }
   return parts

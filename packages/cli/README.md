@@ -13,6 +13,9 @@ import { type } from "arktype"
 const app = command({
   name: "tasks",
   description: "Task manager",
+  options: type({
+    profile: command.string({ short: "p", description: "Config profile" }),
+  }),
   list: {
     description: "List tasks",
     input: type({
@@ -30,6 +33,19 @@ await app.main()
 ```
 
 `command()` normalizes into normal Weapon pieces and returns `spec`, `services`, `executor`, `commands`, `run`, `main`, and `help`.
+Top-level `options` are global options, parse before or after the command path, and are available to handlers as `context.cli.options`.
+
+Top-level `run` defines a root command:
+
+```ts
+const app = command({
+  name: "cat",
+  input: type({ file: command.string({ arg: true }) }),
+  run({ file }) {
+    return file
+  },
+})
+```
 
 ## Low-Level Host
 

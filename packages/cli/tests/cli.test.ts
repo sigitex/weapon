@@ -205,4 +205,69 @@ describe("command", () => {
       }),
     ).toThrow("remove the operations wrapper")
   })
+
+  test("parses global options anywhere and binds them to cli context", async () => {
+    const stream = io()
+    const app = command({
+      ...stream,
+      options: type({
+        profile: command.string({ short: "p", description: "Profile" }),
+        verbose: command.boolean({ short: "v" }),
+      }),
+      tasks: {
+        list: {
+          input: type({ project: command.string({ arg: true }) }),
+          run(input: { project: string }, context: { cli: { options: { profile: string; verbose: boolean } } }) {
+            return { ...input, ...context.cli.options }
+          },
+        },
+      },
+    })
+
+    expect(await app.run(["--profile", "dev", "tasks", "list", "core", "-v"])).toBe(0)
+    expect(JSON.parse(stream.out[0])).toEqual({
+      project: "core",
+      profile: "dev",
+      verbose: true,
+    })
+    expect(app.help(["tasks", "list"])).toContain("Global Options")
+    expect(app.help(["tasks", "list"])).toContain("Profile")
+  })
+
+  test("supports root command with positional input", async () => {
+    const stream = io()
+    const app = command({
+      ...stream,
+      input: type({ file: command.string({ arg: true }) }),
+      run(input: { file: string }) {
+        return input.file
+      },
+    })
+
+    expect(await app.run(["README.md"])).toBe(0)
+    expect(stream.out).toEqual(["README.md\n"])
+  })
+
+  test("rejects global positional args and option collisions", () => {
+    expect(() =>
+      command({
+        options: type({ file: command.string({ arg: true }) }),
+        run() {
+          return "root"
+        },
+      }),
+    ).toThrow("Global options cannot be positional")
+
+    expect(() =>
+      command({
+        options: type({ profile: command.string({ short: "p" }) }),
+        tasks: {
+          input: type({ profile: command.string({ short: "p" }) }),
+          run() {
+            return "tasks"
+          },
+        },
+      }),
+    ).toThrow("Global option collides with command option")
+  })
 })

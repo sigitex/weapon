@@ -17,6 +17,7 @@ export type CommandConfig<Protocol extends DefinesProtocol = {}> =
   CliRuntimeConfig & {
     readonly name?: string
     readonly description?: string
+    readonly options?: Type
     readonly protocol?: Protocol
     readonly middleware?: {
       readonly [K in MiddlewareKeysOf<Protocol>]?: OperationMiddleware<
@@ -85,6 +86,7 @@ const appKeys = new Set([
   "description",
   "protocol",
   "middleware",
+  "options",
   "container",
   "stdout",
   "stderr",
@@ -92,8 +94,16 @@ const appKeys = new Set([
 
 function extractOperations(config: Record<string, unknown>): CommandOperations {
   const out: Record<string, CommandOperation | CommandOperations> = {}
+  const root = extractRootOperation(config)
+  const hasRoot = root !== undefined
+  if (root) {
+    out.$root = root
+  }
   for (const [key, value] of Object.entries(config)) {
     if (appKeys.has(key)) {
+      continue
+    }
+    if (hasRoot && rootKeys.has(key)) {
       continue
     }
     if (key === "operations") {
@@ -106,6 +116,38 @@ function extractOperations(config: Record<string, unknown>): CommandOperations {
     throw new Error(`Command entry must be an object: ${key}`)
   }
   return out
+}
+
+const rootKeys = new Set(["input", "output", "run", "cli"])
+
+function extractRootOperation(config: Record<string, unknown>): CommandOperation | undefined {
+  const hasRootFields =
+    typeof config.run === "function" ||
+    "input" in config ||
+    "output" in config ||
+    "cli" in config
+  if (!hasRootFields) {
+    return undefined
+  }
+  if (typeof config.run !== "function") {
+    throw new Error("Root command requires run")
+  }
+  return {
+    input: config.input as Type | undefined,
+    output: config.output as Type | undefined,
+    cli: rootCli(config.cli),
+    run: config.run as CommandOperation["run"],
+  }
+}
+
+function rootCli(value: unknown): unknown {
+  if (value === false) {
+    return false
+  }
+  if (typeof value === "object" && value !== null) {
+    return { ...value, command: "" }
+  }
+  return { command: "" }
 }
 
 function normalizeDefinition(
