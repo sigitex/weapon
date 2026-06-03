@@ -95,13 +95,11 @@ describe("command", () => {
   test("normalizes operations, defaults config, and returns runtime pieces", async () => {
     const stream = io()
     const app = command({
-      cli: { name: "hello" },
+      name: "hello",
       ...stream,
-      operations: {
-        greet: {
-          run() {
-            return "hi"
-          },
+      greet: {
+        run() {
+          return "hi"
         },
       },
     })
@@ -117,18 +115,16 @@ describe("command", () => {
     const stream = io()
     const app = command({
       ...stream,
-      operations: {
-        run: {
-          input: type({
-            name: command.string({ arg: true }),
-            count: command.integer({ short: "c" }),
-            verbose: command.boolean({ short: "v" }),
-            force: command.boolean({ short: "f" }),
-            tag: type("string[]").configure({ meta: { cli: { option: true } } } as any),
-          }),
-          run(input) {
-            return input
-          },
+      run: {
+        input: type({
+          name: command.string({ arg: true }),
+          count: command.integer({ short: "c" }),
+          verbose: command.boolean({ short: "v" }),
+          force: command.boolean({ short: "f" }),
+          tag: type("string[]").configure({ meta: { cli: { option: true } } } as any),
+        }),
+        run(input: unknown) {
+          return input
         },
       },
     })
@@ -160,12 +156,10 @@ describe("command", () => {
     const stream = io()
     const app = command({
       ...stream,
-      operations: {
-        fail: {
-          input: type({ value: command.integer() }),
-          run() {
-            throw new Error("boom")
-          },
+      fail: {
+        input: type({ value: command.integer() }),
+        run() {
+          throw new Error("boom")
         },
       },
     })
@@ -177,17 +171,15 @@ describe("command", () => {
 
   test("generates command help from descriptions and labels", () => {
     const app = command({
-      operations: {
-        run: {
-          description: "Run job",
-          input: type({
-            name: command.string({ arg: true, description: "Job name" }),
-            count: command.integer({ label: "Count" }),
-            hidden: command.boolean({ hidden: true }),
-          }),
-          run(input) {
-            return input
-          },
+      run: {
+        description: "Run job",
+        input: type({
+          name: command.string({ arg: true, description: "Job name" }),
+          count: command.integer({ label: "Count" }),
+          hidden: command.boolean({ hidden: true }),
+        }),
+        run(input: unknown) {
+          return input
         },
       },
     })
@@ -198,5 +190,19 @@ describe("command", () => {
     expect(help).toContain("Count")
     expect(help).not.toContain("hidden")
     expect(() => app.help(["missing"])).toThrow("Unknown command")
+  })
+
+  test("rejects removed operations wrapper", () => {
+    expect(() =>
+      command({
+        operations: {
+          greet: {
+            run() {
+              return "hi"
+            },
+          },
+        },
+      }),
+    ).toThrow("remove the operations wrapper")
   })
 })

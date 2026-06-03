@@ -2,7 +2,6 @@
 import { type, type Type } from "arktype"
 import {
   type BoundService,
-  type CliConfig,
   type CliFieldMetadata,
   type ConfigOf,
   type DefinesProtocol,
@@ -16,13 +15,15 @@ import { type CliHost, type CliRuntimeConfig, cliHost } from "./host"
 
 export type CommandConfig<Protocol extends DefinesProtocol = {}> =
   CliRuntimeConfig & {
-    readonly cli?: CliConfig
+    readonly name?: string
+    readonly description?: string
     readonly protocol?: Protocol
-    readonly operations: CommandOperations
-  } & {
-    readonly [K in MiddlewareKeysOf<Protocol>]?: OperationMiddleware<
-      ConfigOf<Protocol[K]>
-    >
+    readonly middleware?: {
+      readonly [K in MiddlewareKeysOf<Protocol>]?: OperationMiddleware<
+        ConfigOf<Protocol[K]>
+      >
+    }
+    readonly [key: string]: unknown
   }
 
 export type CommandApp = CliHost & {
@@ -46,20 +47,24 @@ export type CommandOperation = {
 function commandFn<const Protocol extends DefinesProtocol = {}>(
   config: CommandConfig<Protocol>,
 ): CommandApp {
-  const protocol = { cli: cli(config.cli), ...config.protocol } as any
+  const protocol = {
+    cli: cli({ name: config.name, description: config.description }),
+    ...config.protocol,
+  } as any
   if ((config.protocol as Record<string, unknown> | undefined)?.cli) {
     throw new Error("protocol.cli is reserved")
   }
 
-  const contractDefinition = normalizeDefinition(config.operations)
+  const operations = extractOperations(config)
+  const contractDefinition = normalizeDefinition(operations)
   const appSpec = spec(protocol, contractDefinition as any)
   const service = appSpec.contract.service(
-    normalizeService(config.operations) as any,
+    normalizeService(operations) as any,
   )
   const middleware = Object.fromEntries(
     Object.keys(appSpec.middleware).map((key) => [
       key,
-      (config as Record<string, unknown>)[key],
+      (config.middleware as Record<string, unknown> | undefined)?.[key],
     ]),
   ) as any
   const exec = executor(appSpec as any, { middleware, services: [service] })
@@ -73,6 +78,34 @@ function commandFn<const Protocol extends DefinesProtocol = {}>(
     main: host.main,
     help: host.help,
   }
+}
+
+const appKeys = new Set([
+  "name",
+  "description",
+  "protocol",
+  "middleware",
+  "container",
+  "stdout",
+  "stderr",
+])
+
+function extractOperations(config: Record<string, unknown>): CommandOperations {
+  const out: Record<string, CommandOperation | CommandOperations> = {}
+  for (const [key, value] of Object.entries(config)) {
+    if (appKeys.has(key)) {
+      continue
+    }
+    if (key === "operations") {
+      throw new Error("command() uses top-level operations; remove the operations wrapper")
+    }
+    if (value && typeof value === "object") {
+      out[key] = value as CommandOperation | CommandOperations
+      continue
+    }
+    throw new Error(`Command entry must be an object: ${key}`)
+  }
+  return out
 }
 
 function normalizeDefinition(

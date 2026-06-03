@@ -11,18 +11,17 @@ import { command } from "@weapon/cli"
 import { type } from "arktype"
 
 const app = command({
-  cli: { name: "tasks", description: "Task manager" },
-  operations: {
-    list: {
-      description: "List tasks",
-      input: type({
-        project: command.string({ arg: true, description: "Project id" }),
-        limit: command.integer({ short: "l", label: "Limit" }),
-        done: command.boolean({ short: "d" }),
-      }),
-      run(input) {
-        return input
-      },
+  name: "tasks",
+  description: "Task manager",
+  list: {
+    description: "List tasks",
+    input: type({
+      project: command.string({ arg: true, description: "Project id" }),
+      limit: command.integer({ short: "l", label: "Limit" }),
+      done: command.boolean({ short: "d" }),
+    }),
+    run(input) {
+      return input
     },
   },
 })
