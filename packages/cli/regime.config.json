@@ -1,0 +1,8 @@
+{
+  "templates": [
+    "profile/monorepo/library"
+  ],
+  "vars": {
+    "repo": "weapon"
+  }
+}
