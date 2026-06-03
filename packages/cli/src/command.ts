@@ -14,13 +14,16 @@ import {
 } from "@weapon/spec"
 import { type CliHost, type CliRuntimeConfig, cliHost } from "./host"
 
-export type CommandConfig<Protocol extends DefinesProtocol = {}> = CliRuntimeConfig & {
-  readonly cli?: CliConfig
-  readonly protocol?: Protocol
-  readonly operations: CommandOperations
-} & {
-  readonly [K in MiddlewareKeysOf<Protocol>]?: OperationMiddleware<ConfigOf<Protocol[K]>>
-}
+export type CommandConfig<Protocol extends DefinesProtocol = {}> =
+  CliRuntimeConfig & {
+    readonly cli?: CliConfig
+    readonly protocol?: Protocol
+    readonly operations: CommandOperations
+  } & {
+    readonly [K in MiddlewareKeysOf<Protocol>]?: OperationMiddleware<
+      ConfigOf<Protocol[K]>
+    >
+  }
 
 export type CommandApp = CliHost & {
   readonly spec: ReturnType<typeof spec>
@@ -43,16 +46,21 @@ export type CommandOperation = {
 function commandFn<const Protocol extends DefinesProtocol = {}>(
   config: CommandConfig<Protocol>,
 ): CommandApp {
-  const protocol = { cli: cli(config.cli), ...(config.protocol ?? {}) } as any
+  const protocol = { cli: cli(config.cli), ...config.protocol } as any
   if ((config.protocol as Record<string, unknown> | undefined)?.cli) {
     throw new Error("protocol.cli is reserved")
   }
 
   const contractDefinition = normalizeDefinition(config.operations)
   const appSpec = spec(protocol, contractDefinition as any)
-  const service = appSpec.contract.service(normalizeService(config.operations) as any)
+  const service = appSpec.contract.service(
+    normalizeService(config.operations) as any,
+  )
   const middleware = Object.fromEntries(
-    Object.keys(appSpec.middleware).map((key) => [key, (config as Record<string, unknown>)[key]]),
+    Object.keys(appSpec.middleware).map((key) => [
+      key,
+      (config as Record<string, unknown>)[key],
+    ]),
   ) as any
   const exec = executor(appSpec as any, { middleware, services: [service] })
   const host = cliHost(protocol.cli, exec, config)
@@ -67,7 +75,9 @@ function commandFn<const Protocol extends DefinesProtocol = {}>(
   }
 }
 
-function normalizeDefinition(operations: CommandOperations): Record<string, unknown> {
+function normalizeDefinition(
+  operations: CommandOperations,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(operations)) {
     if (isCommandOperation(value)) {
@@ -87,22 +97,31 @@ function normalizeDefinition(operations: CommandOperations): Record<string, unkn
   return out
 }
 
-function normalizeService(operations: CommandOperations): Record<string, unknown> {
+function normalizeService(
+  operations: CommandOperations,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(operations)) {
-    if (isCommandOperation(value)) out[key] = value.run
-    else out[key] = normalizeService(value as CommandOperations)
+    if (isCommandOperation(value)) {
+      out[key] = value.run
+    } else {
+      out[key] = normalizeService(value as CommandOperations)
+    }
   }
   return out
 }
 
 function isCommandOperation(value: unknown): value is CommandOperation {
-  if (!value || typeof value !== "object") return false
+  if (!value || typeof value !== "object") {
+    return false
+  }
   return "run" in value
 }
 
 function looksLikeOperation(value: unknown): boolean {
-  if (!value || typeof value !== "object") return false
+  if (!value || typeof value !== "object") {
+    return false
+  }
   return ["input", "output", "cli", "description"].some((key) => key in value)
 }
 
@@ -111,7 +130,10 @@ export type CommandFieldOptions = CliFieldMetadata & {
   readonly label?: string
 }
 
-function withCliMetadata<T extends Type>(field: T, options: CommandFieldOptions = {}): T {
+function withCliMetadata<T extends Type>(
+  field: T,
+  options: CommandFieldOptions = {},
+): T {
   const { description, label, ...cliMeta } = options
   return field.configure({
     ...(description !== undefined && { description }),
