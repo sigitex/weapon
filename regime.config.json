@@ -1,6 +1,7 @@
 {
   "templates": [
     "profile/monorepo/root",
+    "profile/workspace",
     "workflow/mirror",
     "workflow/publish-npm"
   ],

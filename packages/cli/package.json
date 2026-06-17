@@ -1,11 +1,15 @@
 {
-  "name": "@weapon/query",
+  "name": "@weapon/cli",
   "type": "module",
-  "exports": "./src/query.ts",
+  "exports": "./src/index.ts",
   "dependencies": {
-    "@weapon/remote": "workspace:*",
+    "@sigitex/bind": "workspace:*",
     "@weapon/spec": "workspace:*",
-    "@tanstack/react-query": "catalog:"
+    "arktype": "catalog:"
+  },
+  "devDependencies": {
+    "@typescript/native-preview": "beta",
+    "@types/bun": "^1.3.13"
   },
   "license": "MIT",
   "author": {
@@ -15,11 +19,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sigitex/weapon.git"
-  },
-  "devDependencies": {
-    "@sigitex/ssjs": "workspace:*",
-    "@typescript/native-preview": "beta",
-    "@types/bun": "^1.3.13"
   },
   "scripts": {
     "check": "tsgo --build",

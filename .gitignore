@@ -3,3 +3,8 @@ dist
 .env*
 *.tsbuildinfo
 .secrets
+.opencode
+.agents
+packages/*/lib
+examples/*/dist
+.ai
