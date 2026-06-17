@@ -11,7 +11,11 @@ import {
   executor,
   spec,
 } from "@weapon/spec"
-import { type CliHost, type CliRuntimeConfig, cliHost } from "./host"
+import {
+  type CliHost,
+  type CliRuntimeConfig,
+  CliHost as CliHostRuntime,
+} from "./CliHost"
 
 export type CommandConfig<Protocol extends DefinesProtocol = {}> =
   CliRuntimeConfig & {
@@ -59,9 +63,7 @@ function commandFn<const Protocol extends DefinesProtocol = {}>(
   const operations = extractOperations(config)
   const contractDefinition = normalizeDefinition(operations)
   const appSpec = spec(protocol, contractDefinition as any)
-  const service = appSpec.contract.service(
-    normalizeService(operations) as any,
-  )
+  const service = appSpec.contract.service(normalizeService(operations) as any)
   const middleware = Object.fromEntries(
     Object.keys(appSpec.middleware).map((key) => [
       key,
@@ -69,7 +71,7 @@ function commandFn<const Protocol extends DefinesProtocol = {}>(
     ]),
   ) as any
   const exec = executor(appSpec as any, { middleware, services: [service] })
-  const host = cliHost(protocol.cli, exec, config)
+  const host = CliHostRuntime.create(protocol.cli, exec, config)
   return {
     spec: appSpec as any,
     services: [service as any],
@@ -107,7 +109,9 @@ function extractOperations(config: Record<string, unknown>): CommandOperations {
       continue
     }
     if (key === "operations") {
-      throw new Error("command() uses top-level operations; remove the operations wrapper")
+      throw new Error(
+        "command() uses top-level operations; remove the operations wrapper",
+      )
     }
     if (value && typeof value === "object") {
       out[key] = value as CommandOperation | CommandOperations
@@ -120,7 +124,9 @@ function extractOperations(config: Record<string, unknown>): CommandOperations {
 
 const rootKeys = new Set(["input", "output", "run", "cli"])
 
-function extractRootOperation(config: Record<string, unknown>): CommandOperation | undefined {
+function extractRootOperation(
+  config: Record<string, unknown>,
+): CommandOperation | undefined {
   const hasRootFields =
     typeof config.run === "function" ||
     "input" in config ||
