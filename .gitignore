@@ -7,4 +7,4 @@ dist
 .agents
 packages/*/lib
 examples/*/dist
-.ai
+.internal
