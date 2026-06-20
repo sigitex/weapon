@@ -61,14 +61,20 @@ function commandFn<const Protocol extends DefinesProtocol = {}>(
   }
 
   const operations = extractOperations(config)
-  const contractDefinition = normalizeDefinition(operations)
+  const protocolKeys = Object.keys(protocol)
+  const contractDefinition = normalizeDefinition(operations, protocolKeys)
   const appSpec = spec(protocol, contractDefinition as any)
   const service = appSpec.contract.service(normalizeService(operations) as any)
   const middleware = Object.fromEntries(
-    Object.keys(appSpec.middleware).map((key) => [
-      key,
-      (config.middleware as Record<string, unknown> | undefined)?.[key],
-    ]),
+    Object.keys(appSpec.middleware).map((key) => {
+      const implementation = (
+        config.middleware as Record<string, unknown> | undefined
+      )?.[key]
+      if (implementation === undefined) {
+        throw new Error(`Missing middleware implementation: ${key}`)
+      }
+      return [key, implementation]
+    }),
   ) as any
   const exec = executor(appSpec as any, { middleware, services: [service] })
   const host = CliHostRuntime.create(protocol.cli, exec, config)
@@ -158,6 +164,7 @@ function rootCli(value: unknown): unknown {
 
 function normalizeDefinition(
   operations: CommandOperations,
+  protocolKeys: readonly string[],
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(operations)) {
@@ -169,10 +176,10 @@ function normalizeDefinition(
         output: value.output ?? type("unknown"),
         cli: value.cli ?? true,
       }
-    } else if (looksLikeOperation(value)) {
+    } else if (looksLikeOperation(value, protocolKeys)) {
       throw new Error(`Command operation requires run: ${key}`)
     } else {
-      out[key] = normalizeDefinition(value as CommandOperations)
+      out[key] = normalizeDefinition(value as CommandOperations, protocolKeys)
     }
   }
   return out
@@ -199,11 +206,16 @@ function isCommandOperation(value: unknown): value is CommandOperation {
   return "run" in value
 }
 
-function looksLikeOperation(value: unknown): boolean {
+function looksLikeOperation(
+  value: unknown,
+  protocolKeys: readonly string[],
+): boolean {
   if (!value || typeof value !== "object") {
     return false
   }
-  return ["input", "output", "cli", "description"].some((key) => key in value)
+  return ["input", "output", "cli", "description", ...protocolKeys].some(
+    (key) => key in value,
+  )
 }
 
 export type CommandFieldOptions = CliFieldMetadata & {

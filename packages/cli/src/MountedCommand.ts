@@ -97,11 +97,14 @@ export namespace MountedCommand {
     command: MountedCommand,
     argv: readonly string[],
   ): Record<string, unknown> {
+    const optionFields = command.fields.filter(
+      (field) => field.arg === undefined,
+    )
     const byOption = new Map(
-      command.fields.map((field) => [field.option, field]),
+      optionFields.map((field) => [field.option, field]),
     )
     const byShort = new Map(
-      command.fields
+      optionFields
         .filter((field) => field.short)
         .map((field) => [field.short, field]),
     )
@@ -194,9 +197,16 @@ export namespace MountedCommand {
       }
     }
 
-    if (positionals.length > positionalFields.length) {
+    const allowedPositionals =
+      positionalFields.length === 0
+        ? 0
+        : positionalFields.length === 1 && positionalFields[0].arg === true
+          ? 1
+          : Math.max(...positionalFields.map(Field.positionalIndex)) + 1
+
+    if (positionals.length > allowedPositionals) {
       throw new Error(
-        `Unexpected positional argument: ${positionals[positionalFields.length]}`,
+        `Unexpected positional argument: ${positionals[allowedPositionals]}`,
       )
     }
 
@@ -301,7 +311,7 @@ function assertClaim(
   }
   const key = path.join(" ")
   const previous = claimed.get(key)
-  if (previous) {
+  if (claimed.has(key)) {
     throw new Error(
       `Duplicate command path or alias: ${key} (${previous}, ${owner})`,
     )

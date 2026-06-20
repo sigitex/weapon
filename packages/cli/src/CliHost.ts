@@ -194,8 +194,10 @@ function validateOptionCollisions(
     for (const global of globalFields) {
       const collision = command.fields.find(
         (field) =>
-          field.option === global.option ||
-          (field.short !== undefined && field.short === global.short),
+          (field.arg === undefined && field.option === global.option) ||
+          (field.arg === undefined &&
+            field.short !== undefined &&
+            field.short === global.short),
       )
       if (collision) {
         throw new Error(
