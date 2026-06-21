@@ -5,10 +5,11 @@ import type {
   Executor,
   TransportConfig,
 } from "@weapon/spec"
+import { isArkErrors } from "@weapon/spec"
 import type { Type } from "arktype"
 import { Field } from "./Field"
 import { MountedCommand } from "./MountedCommand"
-import { formatOutput, isArkErrors, withNewline } from "./output"
+import { formatOutput, withNewline } from "./output"
 export type { Field } from "./Field"
 export type { MountedCommand } from "./MountedCommand"
 
@@ -17,6 +18,10 @@ export type CliRuntimeConfig = {
   readonly stdout?: (text: string) => void | Promise<void>
   readonly stderr?: (text: string) => void | Promise<void>
   readonly options?: Type
+}
+
+export type CliContext<Options = unknown> = {
+  readonly cli: { readonly options: Options }
 }
 
 export type CliHost = {
@@ -143,7 +148,8 @@ export namespace CliHost {
         const container = config.container
           ? config.container.clone()
           : new Container()
-        container.bind({ cli: { options } })
+        const context: CliContext = { cli: { options } }
+        container.bind(context)
         const response = await executor.handle(
           { mounted: match.command.mounted, input },
           container,

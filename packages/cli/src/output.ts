@@ -20,11 +20,3 @@ export function formatOutput(
 export function withNewline(text: string): string {
   return text.endsWith("\n") ? text : `${text}\n`
 }
-
-export function isArkErrors(value: unknown): boolean {
-  return (
-    !!value &&
-    typeof value === "object" &&
-    (value as Record<string, unknown>)[" arkKind"] === "errors"
-  )
-}

@@ -141,7 +141,9 @@ export function executor<Protocol extends DefinesProtocol>(
   }
 }
 
-function isArkErrors(value: unknown): value is { throw(): never } {
+export type ArkErrors = { throw(): never }
+
+export function isArkErrors(value: unknown): value is ArkErrors {
   return !!value && typeof value === "object" && (value as Record<string, unknown>)[" arkKind"] === "errors"
 }
 

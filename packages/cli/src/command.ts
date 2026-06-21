@@ -52,30 +52,13 @@ export type CommandOperation = {
 function commandFn<const Protocol extends DefinesProtocol = {}>(
   config: CommandConfig<Protocol>,
 ): CommandApp {
-  const protocol = {
-    cli: cli({ name: config.name, description: config.description }),
-    ...config.protocol,
-  } as any
-  if ((config.protocol as Record<string, unknown> | undefined)?.cli) {
-    throw new Error("protocol.cli is reserved")
-  }
-
+  const protocol = createProtocol(config)
   const protocolKeys = Object.keys(protocol)
   const operations = extractOperations(config, protocolKeys)
-  const contractDefinition = normalizeDefinition(operations, protocolKeys)
-  const appSpec = spec(protocol, contractDefinition as any)
-  const service = appSpec.contract.service(normalizeService(operations) as any)
-  const middleware = Object.fromEntries(
-    Object.keys(appSpec.middleware).map((key) => {
-      const implementation = (
-        config.middleware as Record<string, unknown> | undefined
-      )?.[key]
-      if (implementation === undefined) {
-        throw new Error(`Missing middleware implementation: ${key}`)
-      }
-      return [key, implementation]
-    }),
-  ) as any
+  const normalized = normalizeOperations(operations, protocolKeys)
+  const appSpec = spec(protocol, normalized.definition as any)
+  const service = appSpec.contract.service(normalized.service as any)
+  const middleware = createMiddlewareMap(appSpec, config)
   const exec = executor(appSpec as any, { middleware, services: [service] })
   const host = CliHostRuntime.create(protocol.cli, exec, config)
   return {
@@ -87,6 +70,35 @@ function commandFn<const Protocol extends DefinesProtocol = {}>(
     main: host.main,
     help: host.help,
   }
+}
+
+function createProtocol<const Protocol extends DefinesProtocol>(
+  config: CommandConfig<Protocol>,
+): { readonly cli: ReturnType<typeof cli> } & Protocol {
+  if ((config.protocol as Record<string, unknown> | undefined)?.cli) {
+    throw new Error("protocol.cli is reserved")
+  }
+  return {
+    cli: cli({ name: config.name, description: config.description }),
+    ...config.protocol,
+  } as any
+}
+
+function createMiddlewareMap<const Protocol extends DefinesProtocol>(
+  appSpec: any,
+  config: CommandConfig<Protocol>,
+) {
+  return Object.fromEntries(
+    Object.keys(appSpec.middleware).map((key) => {
+      const implementation = (
+        config.middleware as Record<string, unknown> | undefined
+      )?.[key]
+      if (implementation === undefined) {
+        throw new Error(`Missing middleware implementation: ${key}`)
+      }
+      return [key, implementation]
+    }),
+  ) as any
 }
 
 const appKeys = new Set([
@@ -180,48 +192,46 @@ function rootCli(value: unknown): unknown {
   return { command: "" }
 }
 
-function normalizeDefinition(
+type NormalizedOperations = {
+  readonly definition: Record<string, unknown>
+  readonly service: Record<string, unknown>
+}
+
+function normalizeOperations(
   operations: CommandOperations,
   protocolKeys: readonly string[],
-): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
+): NormalizedOperations {
+  const definition: Record<string, unknown> = {}
+  const service: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(operations)) {
     if (isCommandOperation(value)) {
-      const { run: _run, ...definition } = value
-      out[key] = {
-        ...definition,
+      const { run: _run, ...operationDefinition } = value
+      definition[key] = {
+        ...operationDefinition,
         input: value.input ?? type({}),
         output: value.output ?? type("unknown"),
         cli: value.cli ?? true,
       }
+      service[key] = value.run
     } else if (looksLikeOperation(value, protocolKeys)) {
       throw new Error(`Command operation requires run: ${key}`)
     } else {
-      out[key] = normalizeDefinition(value as CommandOperations, protocolKeys)
+      const normalized = normalizeOperations(
+        value as CommandOperations,
+        protocolKeys,
+      )
+      definition[key] = normalized.definition
+      service[key] = normalized.service
     }
   }
-  return out
-}
-
-function normalizeService(
-  operations: CommandOperations,
-): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(operations)) {
-    if (isCommandOperation(value)) {
-      out[key] = value.run
-    } else {
-      out[key] = normalizeService(value as CommandOperations)
-    }
-  }
-  return out
+  return { definition, service }
 }
 
 function isCommandOperation(value: unknown): value is CommandOperation {
   if (!value || typeof value !== "object") {
     return false
   }
-  return "run" in value
+  return typeof (value as Record<string, unknown>).run === "function"
 }
 
 function looksLikeOperation(
@@ -231,7 +241,7 @@ function looksLikeOperation(
   if (!value || typeof value !== "object") {
     return false
   }
-  return ["input", "output", "cli", "description", ...protocolKeys].some(
+  return ["input", "output", "cli", "description", "run", ...protocolKeys].some(
     (key) => key in value,
   )
 }
