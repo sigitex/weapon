@@ -1,11 +1,11 @@
 import { Container } from "@sigitex/bind"
-import type {
-  CliConfig,
-  CliOperationConfig,
-  Executor,
-  TransportConfig,
+import {
+  isArkErrors,
+  type CliConfig,
+  type CliOperationConfig,
+  type Executor,
+  type TransportConfig,
 } from "@weapon/spec"
-import { isArkErrors } from "@weapon/spec"
 import type { Type } from "arktype"
 import { Field } from "./Field"
 import { MountedCommand } from "./MountedCommand"

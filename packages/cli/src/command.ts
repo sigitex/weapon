@@ -2,7 +2,6 @@
 import { type, type Type } from "arktype"
 import {
   type BoundService,
-  type CliFieldMetadata,
   type ConfigOf,
   type DefinesProtocol,
   type MiddlewareKeysOf,
