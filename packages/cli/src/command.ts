@@ -16,6 +16,7 @@ import {
   type CliRuntimeConfig,
   CliHost as CliHostRuntime,
 } from "./CliHost"
+import { ArkTypeField } from "./ArkTypeField"
 
 export type CommandConfig<Protocol extends DefinesProtocol = {}> =
   CliRuntimeConfig & {
@@ -246,21 +247,13 @@ function looksLikeOperation(
   )
 }
 
-export type CommandFieldOptions = CliFieldMetadata & {
-  readonly description?: string
-  readonly label?: string
-}
+export type CommandFieldOptions = ArkTypeField.Options
 
 function withCliMetadata<T extends Type>(
   field: T,
   options: CommandFieldOptions = {},
 ): T {
-  const { description, label, ...cliMeta } = options
-  return field.configure({
-    ...(description !== undefined && { description }),
-    ...(label !== undefined && { label }),
-    meta: { cli: { option: true, ...cliMeta } },
-  } as any) as T
+  return ArkTypeField.configure(field, options)
 }
 
 export const command = Object.assign(commandFn, {
