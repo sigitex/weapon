@@ -105,6 +105,69 @@ describe("cliHost", () => {
 
     expect(() => cliHost(Bad.transports.cli, exec)).toThrow("Duplicate command path")
   })
+
+  test("rejects empty aliases", () => {
+    const Bad = spec(
+      { cli: cli() },
+      {
+        one: {
+          cli: { aliases: [""] },
+          input: type({}),
+          output: type("string"),
+        },
+      },
+    )
+    const service = Bad.contract.service({ one: () => "one" })
+    const exec = executor(Bad, { middleware: {}, services: [service] })
+
+    expect(() => cliHost(Bad.transports.cli, exec)).toThrow(
+      "Command path cannot be empty",
+    )
+  })
+
+  test("rejects fields that collide with built-in help options", () => {
+    const Bad = spec(
+      { cli: cli() },
+      {
+        one: {
+          cli: true,
+          input: type({ help: command.boolean() }),
+          output: type("string"),
+        },
+      },
+    )
+    const service = Bad.contract.service({ one: () => "one" })
+    const exec = executor(Bad, { middleware: {}, services: [service] })
+    const Good = spec(
+      { cli: cli() },
+      {
+        one: {
+          cli: true,
+          input: type({}),
+          output: type("string"),
+        },
+      },
+    )
+    const goodService = Good.contract.service({ one: () => "one" })
+    const goodExec = executor(Good, {
+      middleware: {},
+      services: [goodService],
+    })
+
+    expect(() => cliHost(Bad.transports.cli, exec)).toThrow(
+      "CLI option is reserved for help: help",
+    )
+    expect(() =>
+      cliHost(Good.transports.cli, goodExec, {
+        options: type({ halt: command.boolean({ short: "h" }) }),
+      }),
+    ).toThrow("CLI option is reserved for help: halt")
+    expect(() =>
+      cliHost(Good.transports.cli, goodExec, {
+        options: type({ help: command.boolean() }),
+      }),
+    ).toThrow("CLI option is reserved for help: help")
+  })
 })
 
 describe("command", () => {
@@ -217,6 +280,24 @@ describe("command", () => {
     expect(await app.run(["fail", "--value", "bad"])).toBe(1)
     expect(await app.run(["fail", "--value", "1"])).toBe(1)
     expect(stream.err.join("\n")).toContain("boom")
+  })
+
+  test("prints command help when executor validation fails", async () => {
+    const stream = io()
+    const app = command({
+      ...stream,
+      fail: {
+        description: "Needs number",
+        input: type({ value: command.integer({ description: "Number" }) }),
+        run(input: unknown) {
+          return input
+        },
+      },
+    })
+
+    expect(await app.run(["fail", "--value", "bad"])).toBe(1)
+    expect(stream.err.join("\n")).toContain("Needs number")
+    expect(stream.err.join("\n")).toContain("Number")
   })
 
   test("generates command help from descriptions and labels", () => {

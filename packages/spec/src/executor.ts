@@ -115,7 +115,7 @@ export function executor<Protocol extends DefinesProtocol>(
     async handle(request: OperationRequest, container: Container): Promise<OperationResponse> {
       const validatedInput = request.mounted.definition.input(request.input)
       if (isArkErrors(validatedInput)) {
-        validatedInput.throw()
+        throw validatedInput
       }
 
       for (const mw of middleware) {

@@ -42,8 +42,11 @@ export namespace MountedCommand {
           : typeof cli === "string"
             ? cli
             : (config?.command ?? mounted.path.join(" ")),
+        { allowEmpty: true },
       )
-      const aliases = (config?.aliases ?? []).map(splitPath)
+      const aliases = (config?.aliases ?? []).map((alias) =>
+        splitPath(alias, { allowEmpty: false }),
+      )
       const fields = Field.fromType(mounted.definition.input)
       const command: MountedCommand = {
         mounted,
@@ -60,6 +63,7 @@ export namespace MountedCommand {
         assertClaim(claimed, alias, path.join(" "))
       }
       Field.validatePositionals(fields)
+      Field.validateOptions(fields)
       commands.push(command)
     }
 
@@ -92,125 +96,11 @@ export namespace MountedCommand {
     return argv.find((arg) => !arg.startsWith("-")) ?? ""
   }
 
-  // oxlint-disable-next-line complexity
   export function parseInput(
     command: MountedCommand,
     argv: readonly string[],
   ): Record<string, unknown> {
-    const optionFields = command.fields.filter(
-      (field) => field.arg === undefined,
-    )
-    const byOption = new Map(
-      optionFields.map((field) => [field.option, field]),
-    )
-    const byShort = new Map(
-      optionFields
-        .filter((field) => field.short)
-        .map((field) => [field.short, field]),
-    )
-    const input: Record<string, unknown> = {}
-    const positionals: string[] = []
-    let options = true
-
-    for (let i = 0; i < argv.length; i++) {
-      const token = argv[i]
-      if (options && token === "--") {
-        options = false
-        continue
-      }
-      if (options && token.startsWith("--")) {
-        const raw = token.slice(2)
-        const negated = raw.startsWith("no-")
-        const [name, inline] = (negated ? raw.slice(3) : raw).split(
-          /[=](.*)/s,
-          2,
-        )
-        const field = byOption.get(name)
-        if (!field) {
-          throw new Error(`Unknown option: --${name}`)
-        }
-        if (negated) {
-          if (!field.boolean) {
-            throw new Error(`Cannot negate non-boolean option: --${name}`)
-          }
-          setField(input, field, false)
-        } else if (field.boolean && inline === undefined) {
-          setField(input, field, true)
-        } else {
-          const value = inline ?? argv[++i]
-          if (value === undefined) {
-            throw new Error(`Missing value for --${name}`)
-          }
-          setField(input, field, value)
-        }
-        continue
-      }
-      if (options && token.startsWith("-") && token !== "-") {
-        const raw = token.slice(1)
-        if (raw.length > 1) {
-          const fields = [...raw].map((short) => byShort.get(short))
-          if (fields.some((field) => !field)) {
-            throw new Error(`Unknown short option: -${raw}`)
-          }
-          if (fields.some((field) => !field!.boolean)) {
-            throw new Error(
-              `Short option clusters only support boolean flags: -${raw}`,
-            )
-          }
-          for (const field of fields) {
-            setField(input, field!, true)
-          }
-        } else {
-          const field = byShort.get(raw)
-          if (!field) {
-            throw new Error(`Unknown short option: -${raw}`)
-          }
-          if (field.boolean) {
-            setField(input, field, true)
-          } else {
-            const value = argv[++i]
-            if (value === undefined) {
-              throw new Error(`Missing value for -${raw}`)
-            }
-
-            setField(input, field, value)
-          }
-        }
-        continue
-      }
-      positionals.push(token)
-    }
-
-    const positionalFields = command.fields.filter(
-      (field) => field.arg !== undefined,
-    )
-    if (positionalFields.length === 1 && positionalFields[0].arg === true) {
-      if (positionals[0] !== undefined) {
-        input[positionalFields[0].key] = positionals[0]
-      }
-    } else {
-      for (const field of positionalFields) {
-        const index = Field.positionalIndex(field)
-        if (positionals[index] !== undefined) {
-          input[field.key] = positionals[index]
-        }
-      }
-    }
-
-    const allowedPositionals =
-      positionalFields.length === 0
-        ? 0
-        : positionalFields.length === 1 && positionalFields[0].arg === true
-          ? 1
-          : Math.max(...positionalFields.map(Field.positionalIndex)) + 1
-
-    if (positionals.length > allowedPositionals) {
-      throw new Error(
-        `Unexpected positional argument: ${positionals[allowedPositionals]}`,
-      )
-    }
-
-    return input
+    return Field.parseInput(command.fields, argv)
   }
 
   export function rootHelp(
@@ -293,9 +183,12 @@ export namespace MountedCommand {
   }
 }
 
-function splitPath(path: string): string[] {
+function splitPath(
+  path: string,
+  config: { readonly allowEmpty: boolean },
+): string[] {
   const parts = path.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0 && path !== "") {
+  if (parts.length === 0 && (!config.allowEmpty || path !== "")) {
     throw new Error("Command path cannot be empty")
   }
   return parts
@@ -317,26 +210,6 @@ function assertClaim(
     )
   }
   claimed.set(key, owner)
-}
-
-function setField(
-  input: Record<string, unknown>,
-  field: Field,
-  value: unknown,
-) {
-  if (field.array) {
-    const existing = input[field.key]
-    input[field.key] = Array.isArray(existing) ? [...existing, value] : [value]
-    return
-  }
-  if (field.boolean) {
-    input[field.key] = value
-    return
-  }
-  if (input[field.key] !== undefined) {
-    throw new Error(`Repeated option: --${field.option}`)
-  }
-  input[field.key] = value
 }
 
 function usageFields(

@@ -45,7 +45,10 @@ export namespace CliHost {
     const commands = MountedCommand.fromOperations(executor.operations)
     const globalFields = config.options ? Field.fromType(config.options) : []
     Field.validateGlobal(globalFields)
-    validateOptionCollisions(commands, globalFields)
+    Field.validateOptions(globalFields)
+    for (const command of commands) {
+      Field.validateGlobalCompatibility(globalFields, command.fields)
+    }
     const stdout =
       config.stdout ?? ((text: string) => process?.stdout.write(text))
     const stderr =
@@ -137,15 +140,6 @@ export namespace CliHost {
     ): Promise<number> {
       try {
         const input = MountedCommand.parseInput(match.command, argv)
-        const validation = match.command.mounted.definition.input(input)
-        if (isArkErrors(validation)) {
-          await stderr(withNewline(String(validation)))
-          await stderr(
-            withNewline(MountedCommand.help(match.command, globalFields)),
-          )
-          return 1
-        }
-
         const container = config.container
           ? config.container.clone()
           : new Container()
@@ -163,6 +157,11 @@ export namespace CliHost {
         await stderr(
           withNewline(error instanceof Error ? error.message : String(error)),
         )
+        if (isArkErrors(error)) {
+          await stderr(
+            withNewline(MountedCommand.help(match.command, globalFields)),
+          )
+        }
         return 1
       }
     }
@@ -184,28 +183,6 @@ export function cliHost<const Config extends CliConfig>(
   config: CliRuntimeConfig = {},
 ): CliHost {
   return CliHost.create(transport, executor, config)
-}
-
-function validateOptionCollisions(
-  commands: readonly MountedCommand[],
-  globalFields: readonly Field[],
-) {
-  for (const command of commands) {
-    for (const global of globalFields) {
-      const collision = command.fields.find(
-        (field) =>
-          (field.arg === undefined && field.option === global.option) ||
-          (field.arg === undefined &&
-            field.short !== undefined &&
-            field.short === global.short),
-      )
-      if (collision) {
-        throw new Error(
-          `Global option collides with command option: ${global.key}`,
-        )
-      }
-    }
-  }
 }
 
 function defaultArgv(): readonly string[] {
