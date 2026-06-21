@@ -54,17 +54,20 @@ export namespace Field {
 
   export function validatePositionals(fields: readonly Field[]) {
     const positionalFields = fields.filter((field) => field.arg !== undefined)
-    if (positionalFields.length <= 1) {
-      return
-    }
     const seen = new Set<number>()
     for (const field of positionalFields) {
       if (field.arg === true) {
+        if (positionalFields.length <= 1) {
+          continue
+        }
         throw new Error(
           `Multiple positional fields require indexes: ${field.key}`,
         )
       }
       const index = positionalIndex(field)
+      if (!Number.isInteger(index) || index < 0) {
+        throw new Error(`Invalid positional index: ${field.key}`)
+      }
       if (seen.has(index)) {
         throw new Error(`Duplicate positional index: ${index}`)
       }
@@ -73,13 +76,30 @@ export namespace Field {
   }
 
   export function validateOptions(fields: readonly Field[]) {
-    const reserved = fields.find(
-      (field) =>
-        field.arg === undefined &&
-        (field.option === "help" || field.short === "h"),
-    )
-    if (reserved) {
-      throw new Error(`CLI option is reserved for help: ${reserved.key}`)
+    const options = fields.filter((field) => field.arg === undefined)
+    const names = new Map<string, string>()
+    const shorts = new Map<string, string>()
+    for (const field of options) {
+      if (field.option === "help" || field.short === "h") {
+        throw new Error(`CLI option is reserved for help: ${field.key}`)
+      }
+      const previousName = names.get(field.option)
+      if (previousName) {
+        throw new Error(
+          `Duplicate CLI option: --${field.option} (${previousName}, ${field.key})`,
+        )
+      }
+      names.set(field.option, field.key)
+      if (field.short === undefined) {
+        continue
+      }
+      const previousShort = shorts.get(field.short)
+      if (previousShort) {
+        throw new Error(
+          `Duplicate CLI short option: -${field.short} (${previousShort}, ${field.key})`,
+        )
+      }
+      shorts.set(field.short, field.key)
     }
   }
 

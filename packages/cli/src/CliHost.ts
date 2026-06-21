@@ -57,6 +57,10 @@ export namespace CliHost {
     function help(argv: readonly string[] = []): string {
       const args = MountedCommand.stripHelpTokens(argv)
       if (args.length === 0) {
+        const root = MountedCommand.match(commands, [])
+        if (root) {
+          return MountedCommand.help(root.command, globalFields)
+        }
         return MountedCommand.rootHelp(transport.config, commands, globalFields)
       }
       const match = MountedCommand.match(commands, args)
@@ -90,11 +94,7 @@ export namespace CliHost {
           if (args.length === 0 && root) {
             return await runCommand(root, [], validatedGlobalOptions)
           }
-          await stdout(
-            withNewline(
-              MountedCommand.rootHelp(transport.config, commands, globalFields),
-            ),
-          )
+          await stdout(withNewline(help([])))
           return 0
         }
 

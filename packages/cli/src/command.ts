@@ -60,8 +60,8 @@ function commandFn<const Protocol extends DefinesProtocol = {}>(
     throw new Error("protocol.cli is reserved")
   }
 
-  const operations = extractOperations(config)
   const protocolKeys = Object.keys(protocol)
+  const operations = extractOperations(config, protocolKeys)
   const contractDefinition = normalizeDefinition(operations, protocolKeys)
   const appSpec = spec(protocol, contractDefinition as any)
   const service = appSpec.contract.service(normalizeService(operations) as any)
@@ -100,9 +100,12 @@ const appKeys = new Set([
   "stderr",
 ])
 
-function extractOperations(config: Record<string, unknown>): CommandOperations {
+function extractOperations(
+  config: Record<string, unknown>,
+  protocolKeys: readonly string[],
+): CommandOperations {
   const out: Record<string, CommandOperation | CommandOperations> = {}
-  const root = extractRootOperation(config)
+  const root = extractRootOperation(config, protocolKeys)
   const hasRoot = root !== undefined
   if (root) {
     out.$root = root
@@ -111,7 +114,7 @@ function extractOperations(config: Record<string, unknown>): CommandOperations {
     if (appKeys.has(key)) {
       continue
     }
-    if (hasRoot && rootKeys.has(key)) {
+    if (hasRoot && isRootOperationKey(key, protocolKeys)) {
       continue
     }
     if (key === "operations") {
@@ -128,28 +131,43 @@ function extractOperations(config: Record<string, unknown>): CommandOperations {
   return out
 }
 
-const rootKeys = new Set(["input", "output", "run", "cli"])
+const rootKeys = new Set(["input", "output", "run", "cli", "description"])
 
 function extractRootOperation(
   config: Record<string, unknown>,
+  protocolKeys: readonly string[],
 ): CommandOperation | undefined {
   const hasRootFields =
     typeof config.run === "function" ||
     "input" in config ||
     "output" in config ||
-    "cli" in config
+    "cli" in config ||
+    protocolKeys.some((key) => key in config)
   if (!hasRootFields) {
     return undefined
   }
   if (typeof config.run !== "function") {
     throw new Error("Root command requires run")
   }
-  return {
-    input: config.input as Type | undefined,
-    output: config.output as Type | undefined,
-    cli: rootCli(config.cli),
-    run: config.run as CommandOperation["run"],
+  const root: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(config)) {
+    if (isRootOperationKey(key, protocolKeys)) {
+      root[key] = value
+    }
   }
+  if (config.description !== undefined) {
+    root.description = config.description
+  }
+  root.cli = rootCli(config.cli)
+  root.run = config.run as CommandOperation["run"]
+  return root as CommandOperation
+}
+
+function isRootOperationKey(
+  key: string,
+  protocolKeys: readonly string[],
+): boolean {
+  return rootKeys.has(key) || protocolKeys.includes(key)
 }
 
 function rootCli(value: unknown): unknown {

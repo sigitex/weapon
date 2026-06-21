@@ -168,6 +168,73 @@ describe("cliHost", () => {
       }),
     ).toThrow("CLI option is reserved for help: help")
   })
+
+  test("rejects duplicate option metadata and invalid positional indexes", () => {
+    const DuplicateLong = spec(
+      { cli: cli() },
+      {
+        one: {
+          cli: true,
+          input: type({
+            first: command.string({ option: "value" }),
+            second: command.string({ option: "value" }),
+          }),
+          output: type("string"),
+        },
+      },
+    )
+    const DuplicateShort = spec(
+      { cli: cli() },
+      {
+        one: {
+          cli: true,
+          input: type({
+            first: command.string({ short: "v" }),
+            second: command.string({ short: "v" }),
+          }),
+          output: type("string"),
+        },
+      },
+    )
+    const InvalidPosition = spec(
+      { cli: cli() },
+      {
+        one: {
+          cli: true,
+          input: type({ bad: command.string({ arg: { index: -1 } }) }),
+          output: type("string"),
+        },
+      },
+    )
+
+    expect(() =>
+      cliHost(
+        DuplicateLong.transports.cli,
+        executor(DuplicateLong, {
+          middleware: {},
+          services: [DuplicateLong.contract.service({ one: () => "one" })],
+        }),
+      ),
+    ).toThrow("Duplicate CLI option")
+    expect(() =>
+      cliHost(
+        DuplicateShort.transports.cli,
+        executor(DuplicateShort, {
+          middleware: {},
+          services: [DuplicateShort.contract.service({ one: () => "one" })],
+        }),
+      ),
+    ).toThrow("Duplicate CLI short option")
+    expect(() =>
+      cliHost(
+        InvalidPosition.transports.cli,
+        executor(InvalidPosition, {
+          middleware: {},
+          services: [InvalidPosition.contract.service({ one: () => "one" })],
+        }),
+      ),
+    ).toThrow("Invalid positional index")
+  })
 })
 
 describe("command", () => {
@@ -377,6 +444,35 @@ describe("command", () => {
 
     expect(await app.run(["README.md"])).toBe(0)
     expect(stream.out).toEqual(["README.md\n"])
+    expect(app.help()).toContain("<file>")
+    expect(app.help()).not.toContain("<command>")
+    expect(await app.run(["--help"])).toBe(0)
+    expect(stream.out[1]).toContain("<file>")
+  })
+
+  test("preserves root operation description and protocol config", async () => {
+    const stream = io()
+    let authorized = false
+    const app = command({
+      ...stream,
+      description: "Read file",
+      protocol: { authorize: { kind: "middleware" } },
+      middleware: {
+        authorize: {
+          onRequest() {
+            authorized = true
+          },
+        },
+      },
+      authorize: { user: true },
+      run() {
+        return "ok"
+      },
+    })
+
+    expect(app.help()).toContain("Read file")
+    expect(await app.run([])).toBe(0)
+    expect(authorized).toBe(true)
   })
 
   test("rejects global positional args and option collisions", () => {
