@@ -87,7 +87,153 @@ describe("cliHost", () => {
     const service = Bad.contract.service({ one: () => "one", two: () => "two" })
     const exec = executor(Bad, { middleware: {}, services: [service] })
 
+    expect(() => cliHost(Bad.transports.cli, exec)).toThrow(
+      "Duplicate command path",
+    )
+  })
+
+  test("throws on duplicate root command paths", () => {
+    const Bad = spec(
+      { cli: cli() },
+      {
+        one: { cli: "", input: type({}), output: type("string") },
+        two: { cli: { command: "" }, input: type({}), output: type("string") },
+      },
+    )
+    const service = Bad.contract.service({ one: () => "one", two: () => "two" })
+    const exec = executor(Bad, { middleware: {}, services: [service] })
+
     expect(() => cliHost(Bad.transports.cli, exec)).toThrow("Duplicate command path")
+  })
+
+  test("rejects empty aliases", () => {
+    const Bad = spec(
+      { cli: cli() },
+      {
+        one: {
+          cli: { aliases: [""] },
+          input: type({}),
+          output: type("string"),
+        },
+      },
+    )
+    const service = Bad.contract.service({ one: () => "one" })
+    const exec = executor(Bad, { middleware: {}, services: [service] })
+
+    expect(() => cliHost(Bad.transports.cli, exec)).toThrow(
+      "Command path cannot be empty",
+    )
+  })
+
+  test("rejects fields that collide with built-in help options", () => {
+    const Bad = spec(
+      { cli: cli() },
+      {
+        one: {
+          cli: true,
+          input: type({ help: command.boolean() }),
+          output: type("string"),
+        },
+      },
+    )
+    const service = Bad.contract.service({ one: () => "one" })
+    const exec = executor(Bad, { middleware: {}, services: [service] })
+    const Good = spec(
+      { cli: cli() },
+      {
+        one: {
+          cli: true,
+          input: type({}),
+          output: type("string"),
+        },
+      },
+    )
+    const goodService = Good.contract.service({ one: () => "one" })
+    const goodExec = executor(Good, {
+      middleware: {},
+      services: [goodService],
+    })
+
+    expect(() => cliHost(Bad.transports.cli, exec)).toThrow(
+      "CLI option is reserved for help: help",
+    )
+    expect(() =>
+      cliHost(Good.transports.cli, goodExec, {
+        options: type({ halt: command.boolean({ short: "h" }) }),
+      }),
+    ).toThrow("CLI option is reserved for help: halt")
+    expect(() =>
+      cliHost(Good.transports.cli, goodExec, {
+        options: type({ help: command.boolean() }),
+      }),
+    ).toThrow("CLI option is reserved for help: help")
+  })
+
+  test("rejects duplicate option metadata and invalid positional indexes", () => {
+    const DuplicateLong = spec(
+      { cli: cli() },
+      {
+        one: {
+          cli: true,
+          input: type({
+            first: command.string({ option: "value" }),
+            second: command.string({ option: "value" }),
+          }),
+          output: type("string"),
+        },
+      },
+    )
+    const DuplicateShort = spec(
+      { cli: cli() },
+      {
+        one: {
+          cli: true,
+          input: type({
+            first: command.string({ short: "v" }),
+            second: command.string({ short: "v" }),
+          }),
+          output: type("string"),
+        },
+      },
+    )
+    const InvalidPosition = spec(
+      { cli: cli() },
+      {
+        one: {
+          cli: true,
+          input: type({ bad: command.string({ arg: { index: -1 } }) }),
+          output: type("string"),
+        },
+      },
+    )
+
+    expect(() =>
+      cliHost(
+        DuplicateLong.transports.cli,
+        executor(DuplicateLong, {
+          middleware: {},
+          services: [DuplicateLong.contract.service({ one: () => "one" })],
+        }),
+      ),
+    ).toThrow("Duplicate CLI option")
+    expect(() =>
+      cliHost(
+        DuplicateShort.transports.cli,
+        executor(DuplicateShort, {
+          middleware: {},
+          services: [DuplicateShort.contract.service({ one: () => "one" })],
+        }),
+      ),
+    ).toThrow("Duplicate CLI short option")
+    expect(() =>
+      cliHost(
+        InvalidPosition.transports.cli,
+        executor(InvalidPosition, {
+          middleware: {},
+          services: [InvalidPosition.contract.service({ one: () => "one" })],
+        }),
+      ),
+    ).toThrow("Invalid positional index")
   })
 })
 
@@ -152,6 +298,40 @@ describe("command", () => {
     })
   })
 
+  test("rejects option syntax for positional fields", async () => {
+    const stream = io()
+    const app = command({
+      ...stream,
+      run: {
+        input: type({ name: command.string({ arg: true, short: "n" }) }),
+        run(input: unknown) {
+          return input
+        },
+      },
+    })
+
+    expect(await app.run(["run", "--name", "project"])).toBe(1)
+    expect(await app.run(["run", "-n", "project"])).toBe(1)
+    expect(stream.err.join("\n")).toContain("Unknown option: --name")
+    expect(stream.err.join("\n")).toContain("Unknown short option: -n")
+  })
+
+  test("allows sparse explicit positional indexes", async () => {
+    const stream = io()
+    const app = command({
+      ...stream,
+      run: {
+        input: type({ third: command.string({ arg: { index: 2 } }) }),
+        run(input: unknown) {
+          return input
+        },
+      },
+    })
+
+    expect(await app.run(["run", "ignored", "also-ignored", "value"])).toBe(0)
+    expect(JSON.parse(stream.out[0])).toEqual({ third: "value" })
+  })
+
   test("returns non-zero for validation and handler errors", async () => {
     const stream = io()
     const app = command({
@@ -167,6 +347,24 @@ describe("command", () => {
     expect(await app.run(["fail", "--value", "bad"])).toBe(1)
     expect(await app.run(["fail", "--value", "1"])).toBe(1)
     expect(stream.err.join("\n")).toContain("boom")
+  })
+
+  test("prints command help when executor validation fails", async () => {
+    const stream = io()
+    const app = command({
+      ...stream,
+      fail: {
+        description: "Needs number",
+        input: type({ value: command.integer({ description: "Number" }) }),
+        run(input: unknown) {
+          return input
+        },
+      },
+    })
+
+    expect(await app.run(["fail", "--value", "bad"])).toBe(1)
+    expect(stream.err.join("\n")).toContain("Needs number")
+    expect(stream.err.join("\n")).toContain("Number")
   })
 
   test("generates command help from descriptions and labels", () => {
@@ -246,6 +444,35 @@ describe("command", () => {
 
     expect(await app.run(["README.md"])).toBe(0)
     expect(stream.out).toEqual(["README.md\n"])
+    expect(app.help()).toContain("<file>")
+    expect(app.help()).not.toContain("<command>")
+    expect(await app.run(["--help"])).toBe(0)
+    expect(stream.out[1]).toContain("<file>")
+  })
+
+  test("preserves root operation description and protocol config", async () => {
+    const stream = io()
+    let authorized = false
+    const app = command({
+      ...stream,
+      description: "Read file",
+      protocol: { authorize: { kind: "middleware" } },
+      middleware: {
+        authorize: {
+          onRequest() {
+            authorized = true
+          },
+        },
+      },
+      authorize: { user: true },
+      run() {
+        return "ok"
+      },
+    })
+
+    expect(app.help()).toContain("Read file")
+    expect(await app.run([])).toBe(0)
+    expect(authorized).toBe(true)
   })
 
   test("rejects global positional args and option collisions", () => {
@@ -269,5 +496,51 @@ describe("command", () => {
         },
       }),
     ).toThrow("Global option collides with command option")
+  })
+
+  test("allows global options to share names with command positionals", async () => {
+    const stream = io()
+    const app = command({
+      ...stream,
+      options: type({ profile: command.string() }),
+      tasks: {
+        input: type({ profile: command.string({ arg: true }) }),
+        run(
+          input: { profile: string },
+          context: { cli: { options: { profile: string } } },
+        ) {
+          return { command: input.profile, global: context.cli.options.profile }
+        },
+      },
+    })
+
+    expect(await app.run(["--profile", "dev", "tasks", "prod"])).toBe(0)
+    expect(JSON.parse(stream.out[0])).toEqual({
+      command: "prod",
+      global: "dev",
+    })
+  })
+
+  test("rejects protocol operation config without run", () => {
+    expect(() =>
+      command({
+        protocol: { authorize: { kind: "middleware" } },
+        secure: { authorize: { user: true } },
+      }),
+    ).toThrow("Command operation requires run: secure")
+  })
+
+  test("rejects missing middleware implementation", () => {
+    expect(() =>
+      command({
+        protocol: { authorize: { kind: "middleware" } },
+        secure: {
+          authorize: { user: true },
+          run() {
+            return "secure"
+          },
+        },
+      }),
+    ).toThrow("Missing middleware implementation: authorize")
   })
 })

@@ -2,7 +2,6 @@
 import { type, type Type } from "arktype"
 import {
   type BoundService,
-  type CliFieldMetadata,
   type ConfigOf,
   type DefinesProtocol,
   type MiddlewareKeysOf,
@@ -16,6 +15,7 @@ import {
   type CliRuntimeConfig,
   CliHost as CliHostRuntime,
 } from "./CliHost"
+import { ArkTypeField } from "./ArkTypeField"
 
 export type CommandConfig<Protocol extends DefinesProtocol = {}> =
   CliRuntimeConfig & {
@@ -52,24 +52,13 @@ export type CommandOperation = {
 function commandFn<const Protocol extends DefinesProtocol = {}>(
   config: CommandConfig<Protocol>,
 ): CommandApp {
-  const protocol = {
-    cli: cli({ name: config.name, description: config.description }),
-    ...config.protocol,
-  } as any
-  if ((config.protocol as Record<string, unknown> | undefined)?.cli) {
-    throw new Error("protocol.cli is reserved")
-  }
-
-  const operations = extractOperations(config)
-  const contractDefinition = normalizeDefinition(operations)
-  const appSpec = spec(protocol, contractDefinition as any)
-  const service = appSpec.contract.service(normalizeService(operations) as any)
-  const middleware = Object.fromEntries(
-    Object.keys(appSpec.middleware).map((key) => [
-      key,
-      (config.middleware as Record<string, unknown> | undefined)?.[key],
-    ]),
-  ) as any
+  const protocol = createProtocol(config)
+  const protocolKeys = Object.keys(protocol)
+  const operations = extractOperations(config, protocolKeys)
+  const normalized = normalizeOperations(operations, protocolKeys)
+  const appSpec = spec(protocol, normalized.definition as any)
+  const service = appSpec.contract.service(normalized.service as any)
+  const middleware = createMiddlewareMap(appSpec, config)
   const exec = executor(appSpec as any, { middleware, services: [service] })
   const host = CliHostRuntime.create(protocol.cli, exec, config)
   return {
@@ -83,6 +72,35 @@ function commandFn<const Protocol extends DefinesProtocol = {}>(
   }
 }
 
+function createProtocol<const Protocol extends DefinesProtocol>(
+  config: CommandConfig<Protocol>,
+): { readonly cli: ReturnType<typeof cli> } & Protocol {
+  if ((config.protocol as Record<string, unknown> | undefined)?.cli) {
+    throw new Error("protocol.cli is reserved")
+  }
+  return {
+    cli: cli({ name: config.name, description: config.description }),
+    ...config.protocol,
+  } as any
+}
+
+function createMiddlewareMap<const Protocol extends DefinesProtocol>(
+  appSpec: any,
+  config: CommandConfig<Protocol>,
+) {
+  return Object.fromEntries(
+    Object.keys(appSpec.middleware).map((key) => {
+      const implementation = (
+        config.middleware as Record<string, unknown> | undefined
+      )?.[key]
+      if (implementation === undefined) {
+        throw new Error(`Missing middleware implementation: ${key}`)
+      }
+      return [key, implementation]
+    }),
+  ) as any
+}
+
 const appKeys = new Set([
   "name",
   "description",
@@ -94,9 +112,12 @@ const appKeys = new Set([
   "stderr",
 ])
 
-function extractOperations(config: Record<string, unknown>): CommandOperations {
+function extractOperations(
+  config: Record<string, unknown>,
+  protocolKeys: readonly string[],
+): CommandOperations {
   const out: Record<string, CommandOperation | CommandOperations> = {}
-  const root = extractRootOperation(config)
+  const root = extractRootOperation(config, protocolKeys)
   const hasRoot = root !== undefined
   if (root) {
     out.$root = root
@@ -105,7 +126,7 @@ function extractOperations(config: Record<string, unknown>): CommandOperations {
     if (appKeys.has(key)) {
       continue
     }
-    if (hasRoot && rootKeys.has(key)) {
+    if (hasRoot && isRootOperationKey(key, protocolKeys)) {
       continue
     }
     if (key === "operations") {
@@ -122,28 +143,43 @@ function extractOperations(config: Record<string, unknown>): CommandOperations {
   return out
 }
 
-const rootKeys = new Set(["input", "output", "run", "cli"])
+const rootKeys = new Set(["input", "output", "run", "cli", "description"])
 
 function extractRootOperation(
   config: Record<string, unknown>,
+  protocolKeys: readonly string[],
 ): CommandOperation | undefined {
   const hasRootFields =
     typeof config.run === "function" ||
     "input" in config ||
     "output" in config ||
-    "cli" in config
+    "cli" in config ||
+    protocolKeys.some((key) => key in config)
   if (!hasRootFields) {
     return undefined
   }
   if (typeof config.run !== "function") {
     throw new Error("Root command requires run")
   }
-  return {
-    input: config.input as Type | undefined,
-    output: config.output as Type | undefined,
-    cli: rootCli(config.cli),
-    run: config.run as CommandOperation["run"],
+  const root: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(config)) {
+    if (isRootOperationKey(key, protocolKeys)) {
+      root[key] = value
+    }
   }
+  if (config.description !== undefined) {
+    root.description = config.description
+  }
+  root.cli = rootCli(config.cli)
+  root.run = config.run as CommandOperation["run"]
+  return root as CommandOperation
+}
+
+function isRootOperationKey(
+  key: string,
+  protocolKeys: readonly string[],
+): boolean {
+  return rootKeys.has(key) || protocolKeys.includes(key)
 }
 
 function rootCli(value: unknown): unknown {
@@ -156,71 +192,67 @@ function rootCli(value: unknown): unknown {
   return { command: "" }
 }
 
-function normalizeDefinition(
+type NormalizedOperations = {
+  readonly definition: Record<string, unknown>
+  readonly service: Record<string, unknown>
+}
+
+function normalizeOperations(
   operations: CommandOperations,
-): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
+  protocolKeys: readonly string[],
+): NormalizedOperations {
+  const definition: Record<string, unknown> = {}
+  const service: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(operations)) {
     if (isCommandOperation(value)) {
-      const { run: _run, ...definition } = value
-      out[key] = {
-        ...definition,
+      const { run: _run, ...operationDefinition } = value
+      definition[key] = {
+        ...operationDefinition,
         input: value.input ?? type({}),
         output: value.output ?? type("unknown"),
         cli: value.cli ?? true,
       }
-    } else if (looksLikeOperation(value)) {
+      service[key] = value.run
+    } else if (looksLikeOperation(value, protocolKeys)) {
       throw new Error(`Command operation requires run: ${key}`)
     } else {
-      out[key] = normalizeDefinition(value as CommandOperations)
+      const normalized = normalizeOperations(
+        value as CommandOperations,
+        protocolKeys,
+      )
+      definition[key] = normalized.definition
+      service[key] = normalized.service
     }
   }
-  return out
-}
-
-function normalizeService(
-  operations: CommandOperations,
-): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(operations)) {
-    if (isCommandOperation(value)) {
-      out[key] = value.run
-    } else {
-      out[key] = normalizeService(value as CommandOperations)
-    }
-  }
-  return out
+  return { definition, service }
 }
 
 function isCommandOperation(value: unknown): value is CommandOperation {
   if (!value || typeof value !== "object") {
     return false
   }
-  return "run" in value
+  return typeof (value as Record<string, unknown>).run === "function"
 }
 
-function looksLikeOperation(value: unknown): boolean {
+function looksLikeOperation(
+  value: unknown,
+  protocolKeys: readonly string[],
+): boolean {
   if (!value || typeof value !== "object") {
     return false
   }
-  return ["input", "output", "cli", "description"].some((key) => key in value)
+  return ["input", "output", "cli", "description", "run", ...protocolKeys].some(
+    (key) => key in value,
+  )
 }
 
-export type CommandFieldOptions = CliFieldMetadata & {
-  readonly description?: string
-  readonly label?: string
-}
+export type CommandFieldOptions = ArkTypeField.Options
 
 function withCliMetadata<T extends Type>(
   field: T,
   options: CommandFieldOptions = {},
 ): T {
-  const { description, label, ...cliMeta } = options
-  return field.configure({
-    ...(description !== undefined && { description }),
-    ...(label !== undefined && { label }),
-    meta: { cli: { option: true, ...cliMeta } },
-  } as any) as T
+  return ArkTypeField.configure(field, options)
 }
 
 export const command = Object.assign(commandFn, {

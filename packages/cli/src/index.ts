@@ -1,4 +1,6 @@
+export * from "./ArkTypeField"
 export * from "./CliHost"
 export * from "./Field"
+export * from "./Help"
 export * from "./MountedCommand"
 export * from "./command"

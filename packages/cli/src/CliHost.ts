@@ -1,14 +1,15 @@
 import { Container } from "@sigitex/bind"
-import type {
-  CliConfig,
-  CliOperationConfig,
-  Executor,
-  TransportConfig,
+import {
+  isArkErrors,
+  type CliConfig,
+  type CliOperationConfig,
+  type Executor,
+  type TransportConfig,
 } from "@weapon/spec"
 import type { Type } from "arktype"
 import { Field } from "./Field"
 import { MountedCommand } from "./MountedCommand"
-import { formatOutput, isArkErrors, withNewline } from "./output"
+import { formatOutput, withNewline } from "./output"
 export type { Field } from "./Field"
 export type { MountedCommand } from "./MountedCommand"
 
@@ -17,6 +18,10 @@ export type CliRuntimeConfig = {
   readonly stdout?: (text: string) => void | Promise<void>
   readonly stderr?: (text: string) => void | Promise<void>
   readonly options?: Type
+}
+
+export type CliContext<Options = unknown> = {
+  readonly cli: { readonly options: Options }
 }
 
 export type CliHost = {
@@ -45,15 +50,22 @@ export namespace CliHost {
     const commands = MountedCommand.fromOperations(executor.operations)
     const globalFields = config.options ? Field.fromType(config.options) : []
     Field.validateGlobal(globalFields)
-    validateOptionCollisions(commands, globalFields)
+    Field.validateOptions(globalFields)
+    for (const command of commands) {
+      Field.validateGlobalCompatibility(globalFields, command.fields)
+    }
     const stdout =
       config.stdout ?? ((text: string) => process?.stdout.write(text))
     const stderr =
       config.stderr ?? ((text: string) => process?.stderr.write(text))
 
-    function help(argv: readonly string[] = []): string {
+    function renderHelp(argv: readonly string[] = []): string {
       const args = MountedCommand.stripHelpTokens(argv)
       if (args.length === 0) {
+        const root = MountedCommand.match(commands, [])
+        if (root) {
+          return MountedCommand.help(root.command, globalFields)
+        }
         return MountedCommand.rootHelp(transport.config, commands, globalFields)
       }
       const match = MountedCommand.match(commands, args)
@@ -85,19 +97,15 @@ export namespace CliHost {
         if (args.length === 0 || MountedCommand.isRootHelp(args)) {
           const root = MountedCommand.match(commands, [])
           if (args.length === 0 && root) {
-            return await runCommand(root, [], validatedGlobalOptions)
+            return await executeCommand(root, [], validatedGlobalOptions)
           }
-          await stdout(
-            withNewline(
-              MountedCommand.rootHelp(transport.config, commands, globalFields),
-            ),
-          )
+          await stdout(withNewline(renderHelp([])))
           return 0
         }
 
         if (args[0] === "help") {
           const target = args.slice(1)
-          await stdout(withNewline(help(target)))
+          await stdout(withNewline(renderHelp(target)))
           return 0
         }
 
@@ -121,7 +129,7 @@ export namespace CliHost {
           return 0
         }
 
-        return await runCommand(match, match.rest, validatedGlobalOptions)
+        return await executeCommand(match, match.rest, validatedGlobalOptions)
       } catch (error) {
         await stderr(
           withNewline(error instanceof Error ? error.message : String(error)),
@@ -130,26 +138,18 @@ export namespace CliHost {
       }
     }
 
-    async function runCommand(
+    async function executeCommand(
       match: MountedCommand.Match,
       argv: readonly string[],
       options: unknown,
     ): Promise<number> {
       try {
         const input = MountedCommand.parseInput(match.command, argv)
-        const validation = match.command.mounted.definition.input(input)
-        if (isArkErrors(validation)) {
-          await stderr(withNewline(String(validation)))
-          await stderr(
-            withNewline(MountedCommand.help(match.command, globalFields)),
-          )
-          return 1
-        }
-
         const container = config.container
           ? config.container.clone()
           : new Container()
-        container.bind({ cli: { options } })
+        const context: CliContext = { cli: { options } }
+        container.bind(context)
         const response = await executor.handle(
           { mounted: match.command.mounted, input },
           container,
@@ -163,6 +163,11 @@ export namespace CliHost {
         await stderr(
           withNewline(error instanceof Error ? error.message : String(error)),
         )
+        if (isArkErrors(error)) {
+          await stderr(
+            withNewline(MountedCommand.help(match.command, globalFields)),
+          )
+        }
         return 1
       }
     }
@@ -174,7 +179,7 @@ export namespace CliHost {
       }
     }
 
-    return { executor, commands, run, main, help }
+    return { executor, commands, run, main, help: renderHelp }
   }
 }
 
@@ -184,26 +189,6 @@ export function cliHost<const Config extends CliConfig>(
   config: CliRuntimeConfig = {},
 ): CliHost {
   return CliHost.create(transport, executor, config)
-}
-
-function validateOptionCollisions(
-  commands: readonly MountedCommand[],
-  globalFields: readonly Field[],
-) {
-  for (const command of commands) {
-    for (const global of globalFields) {
-      const collision = command.fields.find(
-        (field) =>
-          field.option === global.option ||
-          (field.short !== undefined && field.short === global.short),
-      )
-      if (collision) {
-        throw new Error(
-          `Global option collides with command option: ${global.key}`,
-        )
-      }
-    }
-  }
 }
 
 function defaultArgv(): readonly string[] {
