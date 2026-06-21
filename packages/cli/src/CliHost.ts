@@ -59,7 +59,7 @@ export namespace CliHost {
     const stderr =
       config.stderr ?? ((text: string) => process?.stderr.write(text))
 
-    function help(argv: readonly string[] = []): string {
+    function renderHelp(argv: readonly string[] = []): string {
       const args = MountedCommand.stripHelpTokens(argv)
       if (args.length === 0) {
         const root = MountedCommand.match(commands, [])
@@ -97,15 +97,15 @@ export namespace CliHost {
         if (args.length === 0 || MountedCommand.isRootHelp(args)) {
           const root = MountedCommand.match(commands, [])
           if (args.length === 0 && root) {
-            return await runCommand(root, [], validatedGlobalOptions)
+            return await executeCommand(root, [], validatedGlobalOptions)
           }
-          await stdout(withNewline(help([])))
+          await stdout(withNewline(renderHelp([])))
           return 0
         }
 
         if (args[0] === "help") {
           const target = args.slice(1)
-          await stdout(withNewline(help(target)))
+          await stdout(withNewline(renderHelp(target)))
           return 0
         }
 
@@ -129,7 +129,7 @@ export namespace CliHost {
           return 0
         }
 
-        return await runCommand(match, match.rest, validatedGlobalOptions)
+        return await executeCommand(match, match.rest, validatedGlobalOptions)
       } catch (error) {
         await stderr(
           withNewline(error instanceof Error ? error.message : String(error)),
@@ -138,7 +138,7 @@ export namespace CliHost {
       }
     }
 
-    async function runCommand(
+    async function executeCommand(
       match: MountedCommand.Match,
       argv: readonly string[],
       options: unknown,
@@ -179,7 +179,7 @@ export namespace CliHost {
       }
     }
 
-    return { executor, commands, run, main, help }
+    return { executor, commands, run, main, help: renderHelp }
   }
 }
 
